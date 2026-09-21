@@ -57,7 +57,7 @@ const Login = () => {
         {/* Main Card — shake on error */}
         <div
           key={shakeKey}
-          className="glass-card rounded-b-2xl rounded-t-none p-8 relative overflow-hidden"
+          className="glass-card rounded-b-2xl rounded-t-none p-5 sm:p-8 relative overflow-hidden"
           style={{
             border: '1px solid var(--border-base)',
             boxShadow: errorMsg

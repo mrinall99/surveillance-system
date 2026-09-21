@@ -254,31 +254,32 @@ const Events = () => {
       {selectedEvent && <EventDetailModal event={selectedEvent} onClose={() => setSelectedEvent(null)} />}
 
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-xl font-display font-bold text-white uppercase tracking-wider flex items-center gap-2.5">
-            <ShieldAlert className="w-6 h-6 text-red-400" />
-            Threat Audit Logs
+          <h1 className="text-lg sm:text-xl font-display font-bold text-white uppercase tracking-wider flex items-center gap-2 sm:gap-2.5">
+            <ShieldAlert className="w-5 h-5 sm:w-6 sm:h-6 text-red-400 flex-shrink-0" />
+            <span>Threat Audit Logs</span>
           </h1>
-          <p className="text-[11px] text-[var(--text-muted)] font-mono mt-1">
+          <p className="text-[10px] sm:text-[11px] text-[var(--text-muted)] font-mono mt-0.5 sm:mt-1">
             Forensic database of perimeter breaches, zone triggers, and dwell-time loitering events.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           <button onClick={fetchEvents} disabled={loading}
-            className="px-3 py-2 rounded-xl border border-[var(--border-base)] text-[var(--text-secondary)] hover:text-white hover:border-cyan-500/50 font-mono text-xs flex items-center gap-2 transition-all"
+            className="flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl border border-[var(--border-base)] text-[var(--text-secondary)] hover:text-white hover:border-cyan-500/50 font-mono text-[11px] sm:text-xs flex items-center justify-center gap-1.5 sm:gap-2 transition-all"
             style={{ background: 'rgba(15,26,48,0.8)' }}>
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
-            REFRESH
+            <span>REFRESH</span>
           </button>
           <button onClick={handleExportCSV} disabled={!events.length}
-            className="px-3 py-2 rounded-xl font-mono text-xs font-bold text-cyan-300 flex items-center gap-2 transition-all disabled:opacity-40"
+            className="flex-1 sm:flex-initial px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl font-mono text-[11px] sm:text-xs font-bold text-cyan-300 flex items-center justify-center gap-1.5 sm:gap-2 transition-all disabled:opacity-40"
             style={{ background: 'rgba(0,212,255,0.08)', border: '1px solid rgba(0,212,255,0.35)' }}>
             <Download className="w-3.5 h-3.5" />
-            EXPORT CSV
+            <span>EXPORT CSV</span>
           </button>
           <button onClick={() => setShowClearConfirm(true)} disabled={clearing || !events.length}
-            className="px-3 py-2 rounded-xl font-mono text-xs text-red-300 flex items-center gap-1.5 transition-all disabled:opacity-40"
+            title="Clear all logs"
+            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl font-mono text-xs text-red-300 flex items-center justify-center gap-1.5 transition-all disabled:opacity-40"
             style={{ background: 'rgba(255,58,58,0.08)', border: '1px solid rgba(255,58,58,0.3)' }}>
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -286,7 +287,7 @@ const Events = () => {
       </div>
 
       {/* Mini Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
         <MiniStat label="Total Events"   value={events.length}  icon={FileText}    color="var(--cyan-400)" />
         <MiniStat label="Critical"       value={criticalCount}  icon={ShieldAlert} color="var(--threat-critical)" />
         <MiniStat label="High Priority"  value={highCount}      icon={AlertTriangle} color="var(--threat-high)" />
@@ -294,7 +295,7 @@ const Events = () => {
       </div>
 
       {/* Filters */}
-      <div className="glass-card rounded-2xl px-4 py-3.5 flex flex-col sm:flex-row items-start sm:items-center gap-3 border border-[var(--border-subtle)]">
+      <div className="glass-card rounded-2xl p-3 sm:px-4 sm:py-3.5 flex flex-col md:flex-row items-stretch md:items-center gap-3 border border-[var(--border-subtle)]">
         {/* Search */}
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)]" />
@@ -303,7 +304,7 @@ const Events = () => {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Search zone, class, reason, track#..."
-            className="cyber-input pl-9 text-[12px]"
+            className="cyber-input pl-9 text-[11px] sm:text-[12px] w-full"
           />
           {searchTerm && (
             <button onClick={() => setSearchTerm('')}
@@ -314,13 +315,13 @@ const Events = () => {
         </div>
 
         {/* Severity pills */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 md:pb-0 flex-nowrap sm:flex-wrap">
           {severities.map(s => {
             const c = pillColors[s];
             const isActive = selectedSeverity === s;
             return (
               <button key={s} onClick={() => setSeverity(s)}
-                className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold border transition-all duration-150
+                className={`px-2.5 sm:px-3 py-1 rounded-full text-[10px] font-mono font-bold border transition-all duration-150 flex-shrink-0
                   ${isActive ? c.active : `${c.inactive} border-[var(--border-subtle)] hover:border-[var(--border-base)] hover:text-white`}`}>
                 {s}
                 {s !== 'ALL' && (
@@ -334,11 +335,11 @@ const Events = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table with responsive horizontal scroll */}
       <div className="glass-card rounded-2xl overflow-hidden border border-[var(--border-subtle)]">
         {/* Sticky header */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-[11px] font-mono border-collapse">
+        <div className="overflow-x-auto w-full">
+          <table className="w-full text-[11px] font-mono border-collapse min-w-[680px]">
             <thead>
               <tr style={{ background: 'rgba(6,11,24,0.9)' }}>
                 {columns.map(col => (

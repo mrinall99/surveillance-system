@@ -60,7 +60,7 @@ const Setup = () => {
         </div>
 
         {/* Card Body */}
-        <div className="glass-panel rounded-b-2xl border-t-0 p-8 shadow-2xl relative overflow-hidden backdrop-blur-xl bg-slate-950/80 border-slate-800">
+        <div className="glass-panel rounded-b-2xl border-t-0 p-5 sm:p-8 shadow-2xl relative overflow-hidden backdrop-blur-xl bg-slate-950/80 border-slate-800">
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-cyan-400 to-emerald-500 animate-pulse"></div>
 
           <div className="flex flex-col items-center text-center mb-6">

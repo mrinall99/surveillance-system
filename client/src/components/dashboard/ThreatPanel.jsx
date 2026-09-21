@@ -30,21 +30,21 @@ const threatConfig = {
 
 const ThreatPanel = ({ threats = [] }) => {
   return (
-    <div className="glass-card rounded-2xl flex flex-col h-full" style={{ minHeight: '300px' }}>
+    <div className="glass-card rounded-2xl flex flex-col h-full max-h-[450px] lg:max-h-none min-h-[280px]" style={{ minHeight: '280px' }}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-[var(--border-subtle)]">
+      <div className="flex items-center justify-between px-4 sm:px-5 pt-4 sm:pt-5 pb-3 border-b border-[var(--border-subtle)] flex-shrink-0">
         <h3 className="text-[10px] font-mono font-bold text-[var(--text-secondary)] uppercase tracking-[0.15em] flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-red-500" />
-          Real-Time Threat Feed
+          <ShieldAlert className="w-4 h-4 text-red-500 flex-shrink-0" />
+          <span>Real-Time Threat Feed</span>
         </h3>
-        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold border"
+        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold border flex-shrink-0"
               style={{ background: 'rgba(255,58,58,0.08)', borderColor: 'rgba(255,58,58,0.2)', color: threats.length > 0 ? '#ff6b6b' : '#3d5a80' }}>
           {threats.length} EVAL{threats.length !== 1 ? 'S' : ''}
         </span>
       </div>
 
       {/* Threat list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-2.5">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2.5">
         {threats.length === 0 ? (
           <div className="h-44 flex flex-col items-center justify-center text-center font-mono text-xs">
             <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3"

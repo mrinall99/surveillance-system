@@ -5,7 +5,7 @@
       "username": "hitman009",
       "password_hash": "$2a$12$uA8bG9mJ/QD2gikXzDexguAeP4hanIpeHa/W5Xr.8sR67Zgrk2.WC",
       "created_at": "2026-09-20T20:39:06.447Z",
-      "last_login": "2026-09-21T18:35:49.877Z",
+      "last_login": "2026-09-21T18:49:53.566Z",
       "failed_attempts": 0,
       "locked_until": null,
       "must_change_pw": 0
@@ -151,6 +151,14 @@
     {
       "id": 18,
       "timestamp": "2026-09-21T18:35:49.887Z",
+      "action": "LOGIN_SUCCESS",
+      "ip_address": "::1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+      "details": "{\"username\":\"hitman009\"}"
+    },
+    {
+      "id": 19,
+      "timestamp": "2026-09-21T18:49:53.577Z",
       "action": "LOGIN_SUCCESS",
       "ip_address": "::1",
       "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
