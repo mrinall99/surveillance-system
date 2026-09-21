@@ -1,14 +1,13 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Camera, AlertOctagon, Video, Settings, ShieldAlert, Cpu } from 'lucide-react';
+import { LayoutDashboard, Camera, ShieldAlert, Settings, Cpu } from 'lucide-react';
 
 const Sidebar = () => {
   const navItems = [
     { path: '/', label: 'COMMAND DASHBOARD', icon: LayoutDashboard },
-    { path: '/cameras', label: 'CAMERAS', icon: Camera },
-    { path: '/events', label: 'EVENT LOGS', icon: AlertOctagon },
-    { path: '/playback', label: 'PLAYBACK', icon: Video },
-    { path: '/settings', label: 'SETTINGS', icon: Settings },
+    { path: '/cameras', label: 'CAMERAS & ZONES', icon: Camera },
+    { path: '/events', label: 'THREAT AUDIT LOGS', icon: ShieldAlert },
+    { path: '/settings', label: 'SYSTEM SETTINGS', icon: Settings },
   ];
 
   return (

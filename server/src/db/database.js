@@ -163,6 +163,14 @@ class StatementWrapper {
             return { changes: 1 };
         }
 
+        // 6b. DELETE FROM events
+        if (sql.includes('delete from events')) {
+            const count = dbData.events.length;
+            dbData.events = [];
+            saveToDisk();
+            return { changes: count };
+        }
+
         // 7. UPDATE admin SET failed_attempts = ?, locked_until = ? WHERE id = ?
         if (sql.includes('update admin set failed_attempts = ?, locked_until = ? where id = ?')) {
             const failed_attempts = args[0];
