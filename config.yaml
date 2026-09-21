@@ -26,7 +26,7 @@ detection:
   input_size: 640
 motion:
   enabled: true
-  sensitivity: 500
+  sensitivity: 900
   learning_rate: 0.005
   blur_kernel:
     - 21
