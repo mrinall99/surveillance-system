@@ -3,193 +3,192 @@ import { Camera, Activity, Cpu, Eye, Layers, Volume2, VolumeX, ShieldAlert } fro
 import ZoneOverlay from '../zones/ZoneOverlay';
 import audioAlert from '../../utils/audioAlert';
 
+/* ---- Offline Radar Placeholder ---- */
+const OfflinePlaceholder = ({ isConnected }) => (
+  <div className="w-full aspect-video rounded-2xl border border-[var(--border-base)] flex flex-col items-center justify-center p-8 text-center relative overflow-hidden"
+       style={{ background: 'radial-gradient(ellipse at 50% 60%, #0c1428 0%, #060b18 100%)' }}>
+    {/* Radar rings */}
+    {[1, 2, 3, 4].map(i => (
+      <div
+        key={i}
+        className="absolute rounded-full border border-cyan-900/30"
+        style={{ width: `${i * 25}%`, height: `${i * 25}%`, top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}
+      />
+    ))}
+    {/* Rotating sweep */}
+    <div className="absolute w-1 h-[35%] bottom-[50%] left-[50%] origin-bottom radar-sweep"
+         style={{ background: 'linear-gradient(to top, rgba(0,212,255,0.4), transparent)', borderRadius: '2px 2px 0 0', marginLeft: '-0.5px' }} />
+
+    <div className="relative z-10">
+      <div className="w-14 h-14 rounded-full border border-[var(--border-base)] flex items-center justify-center mb-4"
+           style={{ background: 'rgba(0,212,255,0.06)' }}>
+        <Camera className="w-7 h-7 text-cyan-700 animate-pulse" />
+      </div>
+      <h3 className="text-sm font-mono font-bold text-[var(--text-secondary)] uppercase tracking-widest mb-2">
+        {isConnected ? 'AWAITING CAMERA STREAM' : 'CV ENGINE DISCONNECTED'}
+      </h3>
+      <p className="text-xs text-[var(--text-muted)] font-mono max-w-xs">
+        {isConnected
+          ? 'Initializing webcam — loading CUDA PyTorch kernels...'
+          : 'Run engine/main.py to connect on port 8765'}
+      </p>
+    </div>
+  </div>
+);
+
+/* ---- Overlay Pill Button ---- */
+const PillBtn = ({ onClick, active, activeClass, inactiveClass, children }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border backdrop-blur-md font-mono text-xs font-bold transition-all duration-200
+      ${active ? activeClass : inactiveClass}`}
+  >
+    {children}
+  </button>
+);
+
+/* ---- LiveFeed ---- */
 const LiveFeed = ({ frameData, isConnected }) => {
   const [showZones, setShowZones] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted]     = useState(false);
   const [cachedZones, setCachedZones] = useState([]);
 
-  // Fetch initial zones as a fallback if not yet delivered via socket stream
   useEffect(() => {
     fetch('/api/zones', { credentials: 'include' })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && Array.isArray(data.zones) && data.zones.length > 0) {
-          setCachedZones(data.zones);
-        }
-      })
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.zones) && d.zones.length > 0) setCachedZones(d.zones); })
       .catch(() => {});
   }, []);
 
-  // Update cached zones whenever payload sends active zones
   useEffect(() => {
-    if (frameData?.payload?.zones && Array.isArray(frameData.payload.zones) && frameData.payload.zones.length > 0) {
-      setCachedZones(frameData.payload.zones);
-    }
+    if (frameData?.payload?.zones?.length > 0) setCachedZones(frameData.payload.zones);
   }, [frameData?.payload?.zones]);
 
-  const payload = frameData?.payload;
-  const threats = payload?.threats || [];
-
-  // Identify targets currently breaching restricted zones
-  const activeBreaches = threats.filter(
-    t => t.zone_type === 'restricted' || t.threat_level === 'CRITICAL'
-  );
+  const payload  = frameData?.payload;
+  const threats  = payload?.threats || [];
+  const activeBreaches     = threats.filter(t => t.zone_type === 'restricted' || t.threat_level === 'CRITICAL');
   const activeBreachZoneNames = activeBreaches.map(t => t.zone_name);
   const hasBreach = activeBreaches.length > 0;
 
-  // Synthesize warning beep sound effect upon restricted zone breach
   useEffect(() => {
-    if (hasBreach && !isMuted) {
-      audioAlert.playRestrictedBreachBeep();
-    }
+    if (hasBreach && !isMuted) audioAlert.playRestrictedBreachBeep();
   }, [threats, hasBreach, isMuted]);
 
   const handleToggleMute = () => {
-    const nextMuted = !isMuted;
-    setIsMuted(nextMuted);
-    audioAlert.setMuted(nextMuted);
-    if (!nextMuted) {
-      audioAlert.playChirp(1200, 0.1); // Short chirp confirmation
-    }
+    const next = !isMuted;
+    setIsMuted(next);
+    audioAlert.setMuted(next);
+    if (!next) audioAlert.playChirp(1200, 0.1);
   };
 
-  if (!isConnected || !frameData) {
-    return (
-      <div className="w-full aspect-video bg-slate-950 rounded-2xl border border-slate-800 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group">
-        <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mb-4 text-slate-600">
-          <Camera className="w-8 h-8 animate-pulse" />
-        </div>
-        <h3 className="text-sm font-mono font-bold text-slate-300 uppercase tracking-wider mb-1">
-          {isConnected ? 'WAITING FOR CAMERA STREAM...' : 'CV ENGINE DISCONNECTED'}
-        </h3>
-        <p className="text-xs text-slate-500 font-mono max-w-sm">
-          {isConnected
-            ? 'Initializing webcam feed and loading CUDA PyTorch acceleration kernels...'
-            : 'Ensure python engine/main.py is running on port 8765.'}
-        </p>
-      </div>
-    );
-  }
+  if (!isConnected || !frameData) return <OfflinePlaceholder isConnected={isConnected} />;
 
   const { frame } = frameData;
-  const activeZones = (payload?.zones && payload.zones.length > 0) ? payload.zones : cachedZones;
+  const activeZones = (payload?.zones?.length > 0) ? payload.zones : cachedZones;
 
   return (
-    <div className={`relative w-full aspect-video bg-black rounded-2xl overflow-hidden border shadow-2xl group transition-all ${
-      hasBreach ? 'border-red-500 shadow-[0_0_35px_rgba(239,68,68,0.4)]' : 'border-slate-800'
-    }`}>
-      {/* Live Base64 Frame Stream Image */}
-      <img
-        src={`data:image/jpeg;base64,${frame}`}
-        alt="Surveillance Feed"
-        className="w-full h-full object-contain"
-      />
+    <div className={`relative w-full aspect-video bg-black rounded-2xl overflow-hidden border shadow-2xl transition-all duration-500
+      ${hasBreach ? 'border-red-500 shadow-neon-red' : 'border-[var(--border-base)]'}`}
+    >
+      {/* Stream image */}
+      <img src={`data:image/jpeg;base64,${frame}`} alt="Surveillance Feed" className="w-full h-full object-contain" />
 
-      {/* Phase 2 Polygonal Spatial Security Zones SVG Overlay */}
-      {showZones && (
-        <ZoneOverlay 
-          zones={activeZones} 
-          activeBreachZoneNames={activeBreachZoneNames} 
-        />
-      )}
+      {/* Scanlines overlay */}
+      <div className="absolute inset-0 scanlines pointer-events-none z-10" />
 
-      {/* Top Stream Overlay Toolbar */}
-      <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-20">
+      {/* Zone Overlay */}
+      {showZones && <ZoneOverlay zones={activeZones} activeBreachZoneNames={activeBreachZoneNames} />}
+
+      {/* Top toolbar */}
+      <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-20">
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-slate-800/80 font-mono text-xs">
-            <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-            <span className="text-slate-200 font-bold">CAM-01 [WEBCAM]</span>
+          {/* Camera tag */}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono text-xs"
+               style={{ background: 'rgba(6,11,24,0.85)', backdropFilter: 'blur(12px)', borderColor: 'rgba(30,49,82,0.8)' }}>
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+            <span className="text-[var(--text-primary)] font-bold tracking-wider">CAM-01</span>
           </div>
 
-          {/* Spatial Zones Toggle Button */}
-          <button
+          {/* Zones toggle */}
+          <PillBtn
             onClick={() => setShowZones(!showZones)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border backdrop-blur-md font-mono text-xs font-bold transition-all ${
-              showZones
-                ? 'bg-cyan-950/80 border-cyan-500/80 text-cyan-300 shadow-lg shadow-cyan-950/50'
-                : 'bg-slate-900/80 border-slate-700/80 text-slate-400 hover:text-slate-200'
-            }`}
-            title="Toggle Spatial Polygonal Zone Overlays"
+            active={showZones}
+            activeClass="bg-cyan-950/90 border-cyan-500/70 text-cyan-300 shadow-neon-cyan-sm"
+            inactiveClass="border-[var(--border-base)] text-[var(--text-muted)] hover:text-white"
+            style={{ background: 'rgba(6,11,24,0.85)', backdropFilter: 'blur(12px)' }}
           >
             <Layers className="w-3.5 h-3.5" />
             <span>ZONES: {showZones ? `ON (${activeZones.length})` : 'OFF'}</span>
-          </button>
+          </PillBtn>
 
-          {/* Audio Alert Toggle Button */}
-          <button
+          {/* Audio alarm */}
+          <PillBtn
             onClick={handleToggleMute}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border backdrop-blur-md font-mono text-xs font-bold transition-all ${
-              hasBreach
-                ? 'bg-red-950/90 border-red-500 text-red-300 animate-bounce shadow-lg shadow-red-950/80'
-                : !isMuted
-                ? 'bg-emerald-950/80 border-emerald-500/80 text-emerald-300'
-                : 'bg-slate-900/80 border-slate-700/80 text-slate-400 hover:text-slate-200'
-            }`}
-            title="Toggle Restricted Zone Breach Audio Alarm Beep"
+            active={hasBreach || !isMuted}
+            activeClass={hasBreach
+              ? 'bg-red-950/90 border-red-500 text-red-300 animate-bounce shadow-neon-red-sm'
+              : 'bg-emerald-950/80 border-emerald-500/70 text-emerald-300'
+            }
+            inactiveClass="border-[var(--border-base)] text-[var(--text-muted)] hover:text-white"
           >
-            {hasBreach ? (
-              <ShieldAlert className="w-3.5 h-3.5 text-red-400 animate-pulse" />
-            ) : !isMuted ? (
-              <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-            ) : (
-              <VolumeX className="w-3.5 h-3.5 text-slate-500" />
-            )}
-            <span>
-              {hasBreach
-                ? '⚠️ JALDI ALARM!'
-                : !isMuted
-                ? 'AUDIO: ARMED'
-                : 'AUDIO: MUTED'}
-            </span>
-          </button>
+            {hasBreach
+              ? <ShieldAlert className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+              : !isMuted
+              ? <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+              : <VolumeX className="w-3.5 h-3.5" />
+            }
+            <span>{hasBreach ? '⚠ JALDI ALARM!' : !isMuted ? 'AUDIO: ARMED' : 'AUDIO: MUTED'}</span>
+          </PillBtn>
 
-          {/* Test Audio Button */}
+          {/* Test audio */}
           <button
             type="button"
             onClick={() => audioAlert.testPlay()}
-            className="px-2.5 py-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-slate-700/80 text-slate-300 hover:text-white font-mono text-xs font-bold flex items-center gap-1.5 transition-all"
-            title="Test jaldi.mp3 alert audio"
+            className="px-2.5 py-1.5 rounded-lg border font-mono text-xs font-bold flex items-center gap-1.5 transition-all text-[var(--text-secondary)] hover:text-white hover:border-cyan-500/50"
+            style={{ background: 'rgba(6,11,24,0.85)', backdropFilter: 'blur(12px)', borderColor: 'rgba(30,49,82,0.8)' }}
           >
             <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
-            <span>TEST</span>
+            TEST
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-950/80 backdrop-blur-md px-3.5 py-1.5 rounded-lg border border-slate-800/80 font-mono text-xs">
-            <Cpu className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-slate-300">{payload.inference_time_ms} ms</span>
+        {/* Right stats */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono text-xs"
+               style={{ background: 'rgba(6,11,24,0.85)', backdropFilter: 'blur(12px)', borderColor: 'rgba(30,49,82,0.8)' }}>
+            <Cpu className="w-3 h-3 text-cyan-400" />
+            <span className="text-[var(--text-primary)]">{payload.inference_time_ms} ms</span>
           </div>
-
-          <div
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg border backdrop-blur-md font-mono text-xs font-bold ${
-              payload.has_motion
-                ? 'bg-red-950/80 border-red-500/80 text-red-400'
-                : 'bg-emerald-950/80 border-emerald-500/80 text-emerald-400'
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border font-mono text-xs font-bold transition-all
+            ${payload.has_motion
+              ? 'bg-red-950/80 border-red-500/70 text-red-400'
+              : 'bg-emerald-950/80 border-emerald-500/70 text-emerald-400'
             }`}
+            style={{ backdropFilter: 'blur(12px)' }}
           >
-            <Activity className="w-3.5 h-3.5" />
-            <span>{payload.has_motion ? 'MOTION ACTIVE' : 'NO MOTION'}</span>
+            <Activity className="w-3 h-3" />
+            <span>{payload.has_motion ? 'MOTION ACTIVE' : 'CLEAR'}</span>
           </div>
         </div>
       </div>
 
-      {/* Bottom Detection Stats Overlay */}
-      <div className="absolute bottom-4 left-4 right-4 bg-slate-950/85 backdrop-blur-md border border-slate-800/80 rounded-xl p-3.5 flex items-center justify-between text-xs font-mono z-20">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-slate-300">
-            <Eye className="w-4 h-4 text-cyan-400" />
-            <span>OBJECTS DETECTED: <strong className="text-white">{payload.detections?.length || 0}</strong></span>
+      {/* Bottom stats bar */}
+      <div className="absolute bottom-3 left-3 right-3 z-20 rounded-xl border px-4 py-3 flex items-center justify-between font-mono text-xs"
+           style={{ background: 'rgba(6,11,24,0.88)', backdropFilter: 'blur(16px)', borderColor: 'rgba(30,49,82,0.8)' }}>
+        <div className="flex items-center gap-5">
+          <div className="flex items-center gap-2 text-[var(--text-secondary)]">
+            <Eye className="w-3.5 h-3.5 text-cyan-400" />
+            <span>OBJECTS: <strong className="text-white">{payload.detections?.length || 0}</strong></span>
           </div>
           {hasBreach && (
-            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-red-900/80 border border-red-500/80 text-red-200 font-bold animate-pulse text-[11px]">
-              <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
-              <span>CRITICAL RESTRICTED ZONE BREACH</span>
+            <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded bg-red-900/80 border border-red-500/60 text-red-200 font-bold animate-pulse text-[10px]">
+              <ShieldAlert className="w-3 h-3 text-red-400" />
+              CRITICAL RESTRICTED ZONE BREACH
             </div>
           )}
         </div>
-        <div className="text-slate-400">
-          TIMESTAMP: <span className="text-slate-200">{payload.timestamp}</span>
+        <div className="text-[var(--text-muted)] text-[10px] tabular-nums">
+          TS: <span className="text-[var(--text-secondary)]">{payload.timestamp}</span>
         </div>
       </div>
     </div>

@@ -1,70 +1,192 @@
-import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, Sliders, Cpu, Activity, Bell, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Settings as SettingsIcon, Save, Cpu, Activity,
+  Bell, Check, AlertCircle, Dot
+} from 'lucide-react';
 
+/* ---- Section Card ---- */
+const Section = ({ icon: Icon, title, accent, children }) => {
+  const accents = {
+    cyan:   { border: '#00d4ff', icon: 'text-cyan-400', label: 'bg-cyan-950/60 text-cyan-300' },
+    emerald:{ border: '#00e676', icon: 'text-emerald-400', label: 'bg-emerald-950/60 text-emerald-300' },
+    amber:  { border: '#ff9500', icon: 'text-amber-400', label: 'bg-amber-950/60 text-amber-300' },
+  };
+  const a = accents[accent] || accents.cyan;
+  return (
+    <div className="glass-card rounded-2xl overflow-hidden" style={{ borderLeft: `3px solid ${a.border}` }}>
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-[var(--border-subtle)]"
+           style={{ background: 'rgba(6,11,24,0.4)' }}>
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${a.icon}`}
+             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <Icon className="w-4 h-4" />
+        </div>
+        <h2 className="text-xs font-mono font-bold text-white uppercase tracking-[0.12em]">{title}</h2>
+      </div>
+      <div className="px-6 py-5 space-y-6">{children}</div>
+    </div>
+  );
+};
+
+/* ---- Label Row ---- */
+const SliderRow = ({ label, value, display, min, max, step, onChange, accent = 'cyan', hint }) => {
+  const pct = ((value - min) / (max - min)) * 100;
+  const colors = { cyan: '#00d4ff', emerald: '#00e676', amber: '#ff9500' };
+  const c = colors[accent] || colors.cyan;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2 font-mono text-xs">
+        <label className="text-[var(--text-secondary)]">{label}</label>
+        <span className="font-bold px-2 py-0.5 rounded-md text-[11px]"
+              style={{ background: `${c}18`, color: c, border: `1px solid ${c}40` }}>
+          {display}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min} max={max} step={step}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="cyber-slider"
+        style={{ '--val': `${pct}%`, background: `linear-gradient(to right, ${c} ${pct}%, var(--border-base) ${pct}%)` }}
+      />
+      {hint && <p className="text-[10px] text-[var(--text-muted)] font-mono mt-1.5">{hint}</p>}
+    </div>
+  );
+};
+
+/* ---- Toggle ---- */
+const CyberToggle = ({ checked, onChange, label, sub }) => (
+  <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--border-subtle)]"
+       style={{ background: 'rgba(6,11,24,0.4)' }}>
+    <div>
+      <div className="text-xs font-mono text-[var(--text-primary)] font-bold">{label}</div>
+      {sub && <div className="text-[10px] font-mono text-[var(--text-muted)] mt-0.5">{sub}</div>}
+    </div>
+    <label className="cyber-toggle flex-shrink-0" onClick={() => onChange(!checked)}>
+      <input type="checkbox" checked={checked} onChange={() => {}} />
+      <div className="cyber-toggle-track">
+        <div className="cyber-toggle-thumb" />
+      </div>
+    </label>
+  </div>
+);
+
+/* ---- Class Chip ---- */
+const ClassChip = ({ id, label, selected, onToggle }) => (
+  <button
+    type="button"
+    onClick={() => onToggle(id)}
+    className={`px-3 py-2 rounded-xl border text-[11px] font-mono font-bold flex items-center gap-2 transition-all duration-150
+      ${selected
+        ? 'border-cyan-500/60 text-cyan-300 shadow-neon-cyan-sm'
+        : 'border-[var(--border-subtle)] text-[var(--text-muted)] hover:border-[var(--border-base)] hover:text-white'
+      }`}
+    style={selected ? { background: 'rgba(0,212,255,0.08)' } : { background: 'rgba(6,11,24,0.5)' }}
+  >
+    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${selected ? 'bg-cyan-400' : 'bg-[var(--text-muted)]'}`} />
+    {label}
+  </button>
+);
+
+/* ---- Save toast ---- */
+const SaveToast = ({ show }) => (
+  <div className={`fixed bottom-6 right-6 z-50 transition-all duration-500 ${show ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+    <div className="flex items-center gap-3 px-5 py-3.5 rounded-xl font-mono text-xs font-bold text-emerald-300"
+         style={{ background: 'rgba(0,59,37,0.95)', border: '1px solid rgba(0,230,118,0.5)', boxShadow: '0 0 25px rgba(0,230,118,0.2)' }}>
+      <Check className="w-4 h-4 text-emerald-400" />
+      Configuration saved — applied live to CV Engine!
+    </div>
+  </div>
+);
+
+/* ============================================================
+   SETTINGS PAGE
+   ============================================================ */
 const Settings = () => {
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]   = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isDirty, setIsDirty]   = useState(false);
 
-  // Form state
-  const [confThreshold, setConfThreshold] = useState(0.5);
-  const [targetFps, setTargetFps] = useState(30);
-  const [motionEnabled, setMotionEnabled] = useState(true);
-  const [sensitivity, setSensitivity] = useState(500);
-  const [cooldown, setCooldown] = useState(15);
+  const [confThreshold,   setConfThreshold]   = useState(0.5);
+  const [targetFps,       setTargetFps]        = useState(30);
+  const [motionEnabled,   setMotionEnabled]    = useState(true);
+  const [sensitivity,     setSensitivity]      = useState(500);
+  const [cooldown,        setCooldown]         = useState(15);
   const [selectedClasses, setSelectedClasses] = useState([]);
 
-  const availableClasses = [
-    { id: 'person', label: 'Persons / Humans' },
-    { id: 'car', label: 'Cars' },
-    { id: 'truck', label: 'Trucks' },
-    { id: 'bus', label: 'Buses' },
-    { id: 'motorcycle', label: 'Motorcycles' },
-    { id: 'bicycle', label: 'Bicycles' },
-    { id: 'dog', label: 'Dogs' },
-    { id: 'cat', label: 'Cats' },
-    { id: 'backpack', label: 'Backpacks' },
-    { id: 'suitcase', label: 'Suitcases' },
-    { id: 'handbag', label: 'Handbags' },
-  ];
+  const originalRef = useRef(null);
 
-  useEffect(() => {
-    fetchConfig();
-  }, []);
+  const availableClasses = [
+    { id: 'person',     label: 'Persons' },
+    { id: 'car',        label: 'Cars' },
+    { id: 'truck',      label: 'Trucks' },
+    { id: 'bus',        label: 'Buses' },
+    { id: 'motorcycle', label: 'Motorcycles' },
+    { id: 'bicycle',    label: 'Bicycles' },
+    { id: 'dog',        label: 'Dogs' },
+    { id: 'cat',        label: 'Cats' },
+    { id: 'backpack',   label: 'Backpacks' },
+    { id: 'suitcase',   label: 'Suitcases' },
+    { id: 'handbag',    label: 'Handbags' },
+  ];
 
   const fetchConfig = async () => {
     try {
       setLoading(true);
       setErrorMsg('');
-      const res = await fetch('/api/config', { credentials: 'include' });
+      const res  = await fetch('/api/config', { credentials: 'include' });
       const data = await res.json();
       if (res.ok && data.success && data.config) {
         setConfig(data.config);
-        setConfThreshold(data.config.detection?.confidence_threshold || 0.5);
-        setTargetFps(data.config.cameras?.[0]?.fps || 30);
-        setMotionEnabled(data.config.motion?.enabled ?? true);
-        setSensitivity(data.config.motion?.sensitivity || 500);
-        setCooldown(data.config.alerts?.cooldown_seconds || 15);
-        setSelectedClasses(data.config.detection?.target_classes || []);
+        const c = data.config;
+        const vals = {
+          confThreshold: c.detection?.confidence_threshold || 0.5,
+          targetFps:     c.cameras?.[0]?.fps || 30,
+          motionEnabled: c.motion?.enabled ?? true,
+          sensitivity:   c.motion?.sensitivity || 500,
+          cooldown:      c.alerts?.cooldown_seconds || 15,
+          selectedClasses: c.detection?.target_classes || [],
+        };
+        setConfThreshold(vals.confThreshold);
+        setTargetFps(vals.targetFps);
+        setMotionEnabled(vals.motionEnabled);
+        setSensitivity(vals.sensitivity);
+        setCooldown(vals.cooldown);
+        setSelectedClasses(vals.selectedClasses);
+        originalRef.current = vals;
+        setIsDirty(false);
       } else {
         throw new Error(data.error || `Server returned HTTP ${res.status}`);
       }
     } catch (err) {
-      console.error('Failed to load settings:', err);
-      setErrorMsg(err.message || 'Failed to fetch settings from backend');
+      setErrorMsg(err.message || 'Failed to fetch settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleClassToggle = (clsId) => {
-    if (selectedClasses.includes(clsId)) {
-      setSelectedClasses(selectedClasses.filter((c) => c !== clsId));
-    } else {
-      setSelectedClasses([...selectedClasses, clsId]);
-    }
+  useEffect(() => { fetchConfig(); }, []);
+
+  /* Track unsaved changes */
+  useEffect(() => {
+    if (!originalRef.current) return;
+    const o = originalRef.current;
+    const changed =
+      parseFloat(confThreshold) !== o.confThreshold ||
+      parseInt(targetFps)       !== o.targetFps ||
+      motionEnabled             !== o.motionEnabled ||
+      parseInt(sensitivity)     !== o.sensitivity ||
+      parseInt(cooldown)        !== o.cooldown ||
+      JSON.stringify(selectedClasses.slice().sort()) !== JSON.stringify(o.selectedClasses.slice().sort());
+    setIsDirty(changed);
+  }, [confThreshold, targetFps, motionEnabled, sensitivity, cooldown, selectedClasses]);
+
+  const handleClassToggle = (id) => {
+    setSelectedClasses(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   };
 
   const handleSave = async (e) => {
@@ -72,242 +194,195 @@ const Settings = () => {
     setSaving(true);
     setSaveSuccess(false);
     setErrorMsg('');
-
-    const updatedPayload = {
-      fps: targetFps,
-      detection: {
-        confidence_threshold: parseFloat(confThreshold),
-        target_classes: selectedClasses
-      },
-      motion: {
-        enabled: motionEnabled,
-        sensitivity: parseInt(sensitivity, 10)
-      },
-      alerts: {
-        cooldown_seconds: parseInt(cooldown, 10)
-      }
-    };
-
     try {
       const res = await fetch('/api/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(updatedPayload)
+        body: JSON.stringify({
+          fps:       parseInt(targetFps),
+          detection: { confidence_threshold: parseFloat(confThreshold), target_classes: selectedClasses },
+          motion:    { enabled: motionEnabled, sensitivity: parseInt(sensitivity, 10) },
+          alerts:    { cooldown_seconds: parseInt(cooldown, 10) },
+        }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to save settings');
-      }
-
+      if (!res.ok || !data.success) throw new Error(data.error || 'Failed to save settings');
       setSaveSuccess(true);
+      setIsDirty(false);
+      originalRef.current = { confThreshold: parseFloat(confThreshold), targetFps: parseInt(targetFps), motionEnabled, sensitivity: parseInt(sensitivity), cooldown: parseInt(cooldown), selectedClasses };
       setTimeout(() => setSaveSuccess(false), 4000);
     } catch (err) {
-      setErrorMsg(err.message || 'Error saving settings');
+      setErrorMsg(err.message);
     } finally {
       setSaving(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="h-64 flex flex-col items-center justify-center font-mono text-cyan-400">
-        <div className="w-10 h-10 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-3"></div>
-        <p className="text-xs">LOADING SYSTEM CONFIGURATION...</p>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="h-64 flex flex-col items-center justify-center font-mono text-cyan-400">
+      <div className="w-10 h-10 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-3" />
+      <p className="text-xs tracking-widest text-[var(--text-muted)]">LOADING SYSTEM CONFIGURATION...</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-5 max-w-5xl animate-fade-in">
+      <SaveToast show={saveSuccess} />
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-mono font-bold text-white uppercase tracking-wider flex items-center gap-2.5">
-            <SettingsIcon className="w-6 h-6 text-cyan-400" />
-            LIVE SYSTEM SETTINGS
+          <h1 className="text-xl font-display font-bold text-white uppercase tracking-wider flex items-center gap-2.5">
+            <SettingsIcon className="w-5 h-5 text-cyan-400" />
+            System Settings
+            {isDirty && (
+              <span className="flex items-center gap-1.5 text-[10px] font-mono font-normal text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-950/40">
+                <Dot className="w-3 h-3 text-amber-400 animate-pulse" />
+                Unsaved changes
+              </span>
+            )}
           </h1>
-          <p className="text-xs text-slate-400 font-mono mt-1">
-            Tune AI detection thresholds, frame rates, and alert rules live from the UI.
+          <p className="text-[11px] text-[var(--text-muted)] font-mono mt-1">
+            Tune AI detection thresholds, frame rates, and alert rules — applied live to CV Engine.
           </p>
         </div>
       </div>
 
-      {saveSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-500/80 text-emerald-400 font-mono text-xs flex items-center gap-3 animate-pulse">
-          <Check className="w-5 h-5 flex-shrink-0" />
-          <span>Configuration saved successfully! Applied live to Python CV Engine.</span>
-        </div>
-      )}
-
+      {/* Error banner */}
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-950/80 border border-red-500/80 text-red-400 font-mono text-xs flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+        <div className="p-4 rounded-xl border border-red-500/40 text-red-400 font-mono text-xs flex items-center gap-3"
+             style={{ background: 'rgba(127,29,29,0.3)' }}>
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
           <div>
             <div>{errorMsg}</div>
-            <button onClick={fetchConfig} className="mt-2 text-cyan-400 underline font-bold">
-              Click to retry loading configuration
-            </button>
+            <button onClick={fetchConfig} className="mt-1.5 text-cyan-400 underline font-bold">Retry loading config</button>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSave} className="space-y-6">
-        {/* Section 1: AI Detection Tuning */}
-        <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-5">
-          <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-            <Cpu className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-sm font-mono font-bold text-white uppercase">YOLOv8 Object Detection Tuning</h2>
-          </div>
-
+      <form onSubmit={handleSave} className="space-y-5">
+        {/* Section 1: YOLOv8 Detection */}
+        <Section icon={Cpu} title="YOLOv8 Object Detection Tuning" accent="cyan">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SliderRow
+              label="Confidence Threshold"
+              value={parseFloat(confThreshold)}
+              display={`${Math.round(confThreshold * 100)}%`}
+              min={0.1} max={0.9} step={0.05}
+              onChange={setConfThreshold}
+              accent="cyan"
+              hint="Higher = fewer false positives. Lower = detects smaller objects."
+            />
             <div>
-              <div className="flex justify-between items-center mb-2 font-mono text-xs">
-                <label className="text-slate-300">Confidence Threshold</label>
-                <span className="text-cyan-400 font-bold">{Math.round(confThreshold * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0.1"
-                max="0.9"
-                step="0.05"
-                value={confThreshold}
-                onChange={(e) => setConfThreshold(e.target.value)}
-                className="w-full accent-cyan-500 bg-slate-900 h-2 rounded-lg cursor-pointer"
-              />
-              <p className="text-[11px] text-slate-500 font-mono mt-1">
-                Higher threshold reduces false positives; lower threshold detects smaller objects.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono text-slate-300 mb-2">Target Camera Frame Rate (FPS)</label>
+              <label className="block text-xs font-mono text-[var(--text-secondary)] mb-2 uppercase tracking-wider">
+                Target Frame Rate (FPS)
+              </label>
               <select
                 value={targetFps}
-                onChange={(e) => setTargetFps(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white font-mono focus:border-cyan-500"
+                onChange={e => setTargetFps(e.target.value)}
+                className="cyber-input"
+                style={{ cursor: 'pointer' }}
               >
-                <option value={15}>15 FPS (Power Saver)</option>
-                <option value={20}>20 FPS (Standard)</option>
-                <option value={30}>30 FPS (High Performance — GPU Recommended)</option>
-                <option value={60}>60 FPS (Ultra Smooth)</option>
+                <option value={15}>15 FPS — Power Saver</option>
+                <option value={20}>20 FPS — Standard</option>
+                <option value={30}>30 FPS — High Performance (GPU)</option>
+                <option value={60}>60 FPS — Ultra Smooth</option>
               </select>
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono text-slate-300 mb-3">Target Object Detection Classes</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 font-mono text-xs">
-              {availableClasses.map((item) => (
-                <label
+            <label className="block text-xs font-mono text-[var(--text-secondary)] mb-3 uppercase tracking-wider">
+              Detection Target Classes
+              <span className="ml-2 text-cyan-400 font-bold">({selectedClasses.length} active)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {availableClasses.map(item => (
+                <ClassChip
                   key={item.id}
-                  className={`p-3 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                    selectedClasses.includes(item.id)
-                      ? 'bg-cyan-950/60 border-cyan-500/80 text-cyan-300'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedClasses.includes(item.id)}
-                    onChange={() => handleClassToggle(item.id)}
-                    className="accent-cyan-500 w-4 h-4 rounded"
-                  />
-                  <span>{item.label}</span>
-                </label>
+                  id={item.id}
+                  label={item.label}
+                  selected={selectedClasses.includes(item.id)}
+                  onToggle={handleClassToggle}
+                />
               ))}
             </div>
           </div>
-        </div>
+        </Section>
 
-        {/* Section 2: Motion Detection Pre-Filter */}
-        <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-5">
-          <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-            <Activity className="w-5 h-5 text-emerald-400" />
-            <h2 className="text-sm font-mono font-bold text-white uppercase">MOG2 Motion Pre-Filter Gatekeeper</h2>
-          </div>
-
+        {/* Section 2: Motion Gatekeeper */}
+        <Section icon={Activity} title="MOG2 Motion Pre-Filter Gatekeeper" accent="emerald">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-900/80 border border-slate-800 font-mono text-xs">
-              <div>
-                <div className="text-slate-200 font-bold">MOG2 Motion Gatekeeper</div>
-                <div className="text-slate-500 text-[11px] mt-0.5">
-                  Disable for "Paranoid Mode" (run YOLO on every frame)
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMotionEnabled(!motionEnabled)}
-                className={`w-12 h-6 rounded-full transition-all relative ${
-                  motionEnabled ? 'bg-cyan-600' : 'bg-slate-700'
-                }`}
-              >
-                <div
-                  className={`w-4 h-4 rounded-full bg-white absolute top-1 transition-all ${
-                    motionEnabled ? 'right-1' : 'left-1'
-                  }`}
-                ></div>
-              </button>
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-2 font-mono text-xs">
-                <label className="text-slate-300">Motion Sensitivity Threshold</label>
-                <span className="text-emerald-400 font-bold">{sensitivity} px²</span>
-              </div>
-              <input
-                type="range"
-                min="100"
-                max="2000"
-                step="50"
-                value={sensitivity}
-                onChange={(e) => setSensitivity(e.target.value)}
-                className="w-full accent-emerald-500 bg-slate-900 h-2 rounded-lg cursor-pointer"
-              />
-              <p className="text-[11px] text-slate-500 font-mono mt-1">
-                Lower pixels² = higher sensitivity to subtle movement.
-              </p>
-            </div>
+            <CyberToggle
+              checked={motionEnabled}
+              onChange={setMotionEnabled}
+              label="MOG2 Motion Gatekeeper"
+              sub='Disable for "Paranoid Mode" — runs YOLO on every frame'
+            />
+            <SliderRow
+              label="Motion Sensitivity Threshold"
+              value={parseInt(sensitivity)}
+              display={`${sensitivity} px²`}
+              min={100} max={2000} step={50}
+              onChange={setSensitivity}
+              accent="emerald"
+              hint="Lower px² = higher sensitivity to subtle movement."
+            />
           </div>
-        </div>
+        </Section>
 
-        {/* Section 3: Alerts Cooldown */}
-        <div className="glass-panel rounded-2xl p-6 border border-slate-800 space-y-5">
-          <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
-            <Bell className="w-5 h-5 text-amber-400" />
-            <h2 className="text-sm font-mono font-bold text-white uppercase">Alerts & Cooldown Rules</h2>
-          </div>
-
-          <div>
-            <label className="block text-xs font-mono text-slate-300 mb-2">Alert Cooldown Cooldown Period (Seconds)</label>
+        {/* Section 3: Alerts */}
+        <Section icon={Bell} title="Alerts & Cooldown Rules" accent="amber">
+          <div className="max-w-sm">
+            <label className="block text-xs font-mono text-[var(--text-secondary)] mb-2 uppercase tracking-wider">
+              Alert Cooldown Period (Seconds)
+            </label>
             <input
               type="number"
-              min="5"
-              max="300"
+              min={5} max={300}
               value={cooldown}
-              onChange={(e) => setCooldown(e.target.value)}
-              className="w-48 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-sm text-white font-mono focus:border-cyan-500"
+              onChange={e => setCooldown(e.target.value)}
+              className="cyber-input"
+              style={{ maxWidth: '180px' }}
             />
-            <p className="text-[11px] text-slate-500 font-mono mt-1">
-              Minimum seconds to wait between duplicate alert notifications to prevent alert flooding.
+            <p className="text-[10px] text-[var(--text-muted)] font-mono mt-2">
+              Minimum seconds between duplicate alert notifications to prevent flooding.
             </p>
           </div>
-        </div>
+        </Section>
 
-        {/* Submit Button */}
+        {/* Submit */}
         <div className="flex justify-end">
           <button
             type="submit"
             disabled={saving}
-            className="px-8 py-4 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono text-xs font-bold uppercase tracking-widest shadow-xl shadow-cyan-950/50 flex items-center gap-2 disabled:opacity-50 transition-all"
+            className="relative px-8 py-4 rounded-xl font-mono text-xs font-bold uppercase tracking-widest text-white overflow-hidden transition-all duration-200 disabled:opacity-50 group"
+            style={{
+              background: isDirty
+                ? 'linear-gradient(135deg, #00b8d9, #7c3aed)'
+                : 'linear-gradient(135deg, #1e3152, #1e3152)',
+              boxShadow: isDirty ? '0 4px 20px rgba(0,212,255,0.3)' : 'none',
+              border: isDirty ? '1px solid rgba(0,212,255,0.3)' : '1px solid var(--border-base)',
+            }}
           >
-            {saving ? (
-              <span>SAVING CONFIGURATION...</span>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>SAVE & APPLY SETTINGS LIVE</span>
-              </>
+            {/* Shimmer */}
+            {!saving && isDirty && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700" />
             )}
+            <span className="relative flex items-center gap-2">
+              {saving ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  SAVING CONFIGURATION...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4" />
+                  SAVE & APPLY SETTINGS LIVE
+                </>
+              )}
+            </span>
           </button>
         </div>
       </form>

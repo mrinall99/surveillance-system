@@ -4,11 +4,11 @@ import Sidebar from './Sidebar';
 
 const Layout = ({ children, isConnected }) => {
   return (
-    <div className="min-h-screen bg-[#080c14] flex text-slate-100 font-['Outfit',sans-serif]">
+    <div className="flex h-screen overflow-hidden theme-transition" style={{ background: 'var(--bg-deep)' }}>
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex flex-col flex-1 overflow-hidden">
         <Header isConnected={isConnected} />
-        <main className="flex-1 p-6 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto p-6 page-enter" style={{ background: 'var(--bg-deep)' }}>
           {children}
         </main>
       </div>

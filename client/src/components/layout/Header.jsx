@@ -1,39 +1,110 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Shield, LogOut, Radio, Clock, UserCheck } from 'lucide-react';
+import { Radio, LogOut, Wifi, WifiOff } from 'lucide-react';
 
 const Header = ({ isConnected }) => {
   const { user, logout } = useAuth();
-  const currentTime = new Date().toLocaleTimeString();
+  const [time, setTime] = useState(new Date());
+
+  // Live ticking clock
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (d) => {
+    const h = d.getHours().toString().padStart(2, '0');
+    const m = d.getMinutes().toString().padStart(2, '0');
+    const s = d.getSeconds().toString().padStart(2, '0');
+    return `${h}:${m}:${s}`;
+  };
+
+  const formatDate = (d) => d.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+
+  // Get user initials for avatar
+  const initials = user?.username
+    ? user.username.slice(0, 2).toUpperCase()
+    : 'AD';
 
   return (
-    <header className="h-16 bg-[#0b1329]/90 border-b border-slate-800/80 px-6 flex items-center justify-between z-30">
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono">
-          <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-400 animate-pulse' : 'text-red-500'}`} />
-          <span className={isConnected ? 'text-emerald-400' : 'text-red-400'}>
-            {isConnected ? 'SYSTEM LIVE' : 'ENGINE OFFLINE'}
+    <header
+      className="h-14 px-5 flex items-center justify-between z-30 border-b border-[var(--border-subtle)]"
+      style={{ background: 'linear-gradient(90deg, #07101f 0%, #0b1225 100%)' }}
+    >
+      {/* Left: Connection status + Clock */}
+      <div className="flex items-center gap-4">
+        {/* Connection pill */}
+        <div className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-mono transition-all duration-300
+          ${isConnected
+            ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-400'
+            : 'bg-red-950/60 border-red-500/40 text-red-400'
+          }`}
+        >
+          {/* Animated wave dots */}
+          <span className="flex items-center gap-0.5">
+            {[0, 0.15, 0.3].map((delay, i) => (
+              <span
+                key={i}
+                className={`w-0.5 rounded-full animate-pulse ${isConnected ? 'bg-emerald-400' : 'bg-red-400'}`}
+                style={{
+                  height: `${6 + i * 2}px`,
+                  animationDelay: `${delay}s`,
+                  animationDuration: '1.2s'
+                }}
+              />
+            ))}
           </span>
+          {isConnected ? (
+            <>
+              <Wifi className="w-3 h-3" />
+              <span>SYSTEM LIVE</span>
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-3 h-3" />
+              <span>ENGINE OFFLINE</span>
+            </>
+          )}
         </div>
-        <div className="hidden md:flex items-center gap-2 text-xs font-mono text-slate-400">
-          <Clock className="w-3.5 h-3.5 text-cyan-400" />
-          <span>{currentTime}</span>
+
+        {/* Live clock */}
+        <div className="hidden md:flex flex-col items-start">
+          <span className="font-mono text-sm font-bold tracking-widest text-[var(--cyan-400)]">
+            {formatTime(time)}
+          </span>
+          <span className="font-mono text-[9px] text-[var(--text-muted)] tracking-wider uppercase">
+            {formatDate(time)}
+          </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 bg-slate-900/80 px-3 py-1.5 rounded-lg border border-slate-800">
-          <UserCheck className="w-4 h-4 text-cyan-400" />
-          <span className="text-xs font-mono text-slate-200">{user?.username || 'ADMIN'}</span>
+      {/* Right: User + Logout */}
+      <div className="flex items-center gap-3">
+        {/* User badge with avatar */}
+        <div
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-[var(--border-base)] text-xs font-mono"
+          style={{ background: 'rgba(15,26,48,0.7)' }}
+        >
+          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+            {initials}
+          </div>
+          <span className="text-[var(--text-primary)] hidden sm:block font-semibold tracking-wider">
+            {user?.username?.toUpperCase() || 'ADMIN'}
+          </span>
+          <span className="hidden lg:block text-[9px] text-[var(--text-muted)] uppercase tracking-widest border-l border-[var(--border-subtle)] pl-2">
+            Admin
+          </span>
         </div>
 
+        {/* Logout */}
         <button
           onClick={logout}
           title="Sign out of terminal"
-          className="p-2 rounded-lg bg-red-950/30 hover:bg-red-900/50 border border-red-800/40 text-red-400 transition-all flex items-center gap-1.5 text-xs font-mono"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-800/40 text-red-400 hover:bg-red-900/30 hover:border-red-500/60 hover:text-red-300 transition-all duration-200 text-xs font-mono font-bold"
+          style={{ background: 'rgba(127, 29, 29, 0.15)' }}
         >
-          <LogOut className="w-4 h-4" />
-          <span className="hidden sm:inline">EXIT</span>
+          <LogOut className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline tracking-wider">EXIT</span>
         </button>
       </div>
     </header>
