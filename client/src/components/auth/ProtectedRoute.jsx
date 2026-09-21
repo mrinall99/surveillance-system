@@ -3,19 +3,15 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const ProtectedRoute = ({ children }) => {
-  const { user, isInitialized, loading } = useAuth();
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#080c14] flex flex-col items-center justify-center font-mono text-cyan-400">
-        <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
-        <p className="tracking-widest uppercase text-sm">VERIFYING SECURITY CREDENTIALS...</p>
+      <div className="min-h-screen bg-[#060b18] flex flex-col items-center justify-center font-mono text-cyan-400 p-4">
+        <div className="w-12 h-12 border-2 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-4 shadow-[0_0_20px_rgba(0,212,255,0.2)]"></div>
+        <p className="tracking-widest uppercase text-xs text-slate-400">VERIFYING OWNER SECURITY TOKEN...</p>
       </div>
     );
-  }
-
-  if (isInitialized === false) {
-    return <Navigate to="/setup" replace />;
   }
 
   if (!user) {

@@ -97,17 +97,17 @@ const Header = ({ isConnected, onToggleMobileNav }) => {
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         {/* User badge with avatar */}
         <div
-          className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-[var(--border-base)] text-xs font-mono"
+          className="flex items-center gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-[var(--border-base)] text-xs font-mono"
           style={{ background: 'rgba(15,26,48,0.7)' }}
         >
           <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-white text-[9px] sm:text-[10px] font-bold flex-shrink-0">
-            {initials}
+            👑
           </div>
           <span className="text-[var(--text-primary)] hidden sm:block font-semibold tracking-wider text-xs">
-            {user?.username?.toUpperCase() || 'ADMIN'}
+            OWNER
           </span>
-          <span className="hidden lg:block text-[9px] text-[var(--text-muted)] uppercase tracking-widest border-l border-[var(--border-subtle)] pl-2">
-            SecOps
+          <span className="hidden lg:block text-[9px] text-cyan-400 uppercase tracking-widest border-l border-[var(--border-subtle)] pl-2">
+            MASTER KEY
           </span>
         </div>
 

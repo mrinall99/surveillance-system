@@ -3,85 +3,69 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [isInitialized, setIsInitialized] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [lockout, setLockout] = useState({ locked: false, remainingAttempts: 5 });
   const [error, setError] = useState(null);
 
-  // Check system auth status on initial load
+  // Check current session on initial load
   useEffect(() => {
-    checkStatus();
+    checkSession();
   }, []);
 
-  const checkStatus = async () => {
+  const checkSession = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/auth/status', { credentials: 'include' });
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
+      setError(null);
+
+      // Verify active cookie session
+      const verifyRes = await fetch('/api/auth/verify', { credentials: 'include' });
+      if (verifyRes.ok) {
+        const verifyData = await verifyRes.json();
+        if (verifyData.authenticated) {
+          setUser(verifyData.user || { role: 'owner', username: 'OWNER' });
+          return;
+        }
       }
-      const data = await res.json();
-      setIsInitialized(data.initialized);
+
+      // If no active session, fetch lockout status
+      const statusRes = await fetch('/api/auth/status', { credentials: 'include' });
+      if (statusRes.ok) {
+        const statusData = await statusRes.json();
+        if (statusData.lockout) {
+          setLockout(statusData.lockout);
+        }
+      }
+      setUser(null);
     } catch (err) {
-      console.error('Failed to check auth status:', err);
-      setError('Connection to backend server failed. Ensure Node backend is running on port 5000.');
+      console.warn('Auth verification:', err.message);
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
-  const login = async (username, password) => {
+  const login = async (secretKey) => {
     setError(null);
     try {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ secretKey: secretKey.trim() })
       });
-      const text = await res.text();
-      let data = {};
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error('Server response was not valid JSON');
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        if (data.lockout) {
+          setLockout(data.lockout);
+        }
+        throw new Error(data.error || 'Invalid Secret Key');
       }
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      setUser({ username: data.username });
-      return true;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  const setup = async (username, password) => {
-    setError(null);
-    try {
-      const res = await fetch('/api/auth/setup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ username, password })
-      });
-      const text = await res.text();
-      let data = {};
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error('Server response was not valid JSON');
-      }
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Setup failed');
-      }
-
-      setIsInitialized(true);
-      setUser({ username: data.username });
+      setUser(data.user || { role: 'owner', username: 'OWNER' });
+      setLockout({ locked: false, remainingAttempts: 5 });
       return true;
     } catch (err) {
       setError(err.message);
@@ -100,7 +84,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isInitialized, user, loading, error, login, setup, logout, checkStatus }}>
+    <AuthContext.Provider value={{ user, loading, error, lockout, login, logout, checkSession }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,113 +1,154 @@
 /**
- * Government-Grade Authentication Service.
- * Implements bcrypt hashing, JWT issuance, 5-strike brute-force lockout, and SQLite audit logging.
+ * Single-Owner Secret Key Authentication Service.
+ * 
+ * Exclusively authenticates the owner via a master secret key.
+ * - Zero multi-user / third-party accounts.
+ * - Timing-safe constant-time secret comparison (mitigates timing side-channels).
+ * - 5-strike brute-force lockout defense with automatic cooldown.
+ * - Forensic audit logging of every authorization & breach attempt.
  */
-const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require('fs');
+const YAML = require('yaml');
 const db = require('../db/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'SURVEILLANCE_CLASSIFIED_JWT_SECRET_KEY_2026';
+// Read config.yaml fallback
+const configPath = path.join(__dirname, '../../../config.yaml');
+let configYaml = {};
+if (fs.existsSync(configPath)) {
+    try {
+        configYaml = YAML.parse(fs.readFileSync(configPath, 'utf8')) || {};
+    } catch (e) {}
+}
+
+const JWT_SECRET = process.env.JWT_SECRET || configYaml.auth?.jwt_secret || 'HAWKEYE_PROPRIETARY_JWT_ENCRYPTION_SECRET_2026_CLASSIFIED';
+
+// In-memory lockout and rate limiting tracker for secret key attempts
+const lockoutState = {
+    failedAttempts: 0,
+    lockedUntil: null
+};
 
 class AuthService {
     /**
-     * Checks if admin account exists in database.
+     * Retrieves the configured Master Owner Secret Key from environment, config, or database.
+     */
+    static getOwnerSecretKey() {
+        return (
+            process.env.OWNER_SECRET_KEY ||
+            configYaml.auth?.owner_secret_key ||
+            'HAWKEYE-MASTER-OWNER-KEY-2026'
+        );
+    }
+
+    /**
+     * Checks system authorization readiness.
      */
     static isInitialized() {
-        const row = db.prepare('SELECT COUNT(*) AS count FROM admin').get();
-        return row.count > 0;
+        return true; // Secret-key system is pre-provisioned and ready
     }
 
     /**
-     * First-time setup wizard for creating owner credentials.
+     * Returns current lockout status.
      */
-    static setupAdmin(username, password, ipAddress, userAgent) {
-        if (this.isInitialized()) {
-            throw new Error('System already initialized. Setup endpoint disabled.');
+    static getLockoutStatus() {
+        const now = Date.now();
+        if (lockoutState.lockedUntil && now < lockoutState.lockedUntil) {
+            const remainingSeconds = Math.ceil((lockoutState.lockedUntil - now) / 1000);
+            const remainingMinutes = Math.ceil(remainingSeconds / 60);
+            return {
+                locked: true,
+                remainingSeconds,
+                remainingMinutes
+            };
         }
-
-        if (!password || password.length < 8) {
-            throw new Error('Password must be at least 8 characters long.');
+        if (lockoutState.lockedUntil && now >= lockoutState.lockedUntil) {
+            // Lockout expired
+            lockoutState.lockedUntil = null;
+            lockoutState.failedAttempts = 0;
         }
-
-        const saltRounds = 12;
-        const passwordHash = bcrypt.hashSync(password, saltRounds);
-
-        const stmt = db.prepare(
-            'INSERT INTO admin (username, password_hash) VALUES (?, ?)'
-        );
-        stmt.run(username, passwordHash);
-
-        // Audit Log
-        this.logAuthEvent('SETUP', ipAddress, userAgent, { username });
-
-        // Generate initial login token
-        return this.generateToken(username);
+        return {
+            locked: false,
+            failedAttempts: lockoutState.failedAttempts,
+            remainingAttempts: Math.max(0, 5 - lockoutState.failedAttempts)
+        };
     }
 
     /**
-     * Admin login handler with lockout protection.
+     * Authenticates owner with secret key.
+     * Uses constant-time timingSafeEqual comparison.
      */
-    static login(username, password, ipAddress, userAgent) {
-        const admin = db.prepare('SELECT * FROM admin WHERE username = ?').get(username);
-
-        if (!admin) {
-            this.logAuthEvent('LOGIN_FAILED', ipAddress, userAgent, { username, reason: 'Invalid username' });
-            throw new Error('Invalid credentials');
+    static login(submittedSecretKey, ipAddress, userAgent) {
+        const status = this.getLockoutStatus();
+        if (status.locked) {
+            this.logAuthEvent('LOCKOUT_BLOCKED', ipAddress, userAgent, {
+                reason: 'Terminal locked due to excessive failed attempts',
+                remainingMinutes: status.remainingMinutes
+            });
+            throw new Error(`Terminal locked due to repeated invalid key attempts. Cooldown active: ${status.remainingMinutes}m remaining.`);
         }
 
-        // Check Account Lockout status
-        if (admin.locked_until) {
-            const lockUntil = new Date(admin.locked_until).getTime();
-            const now = new Date().getTime();
-
-            if (now < lockUntil) {
-                const remainingMinutes = Math.ceil((lockUntil - now) / (60 * 1000));
-                this.logAuthEvent('LOCKOUT', ipAddress, userAgent, { username, remainingMinutes });
-                throw new Error(`Account locked due to multiple failed login attempts. Try again in ${remainingMinutes} minutes.`);
-            } else {
-                // Lock period expired: reset counter
-                db.prepare('UPDATE admin SET failed_attempts = 0, locked_until = NULL WHERE id = ?').run(admin.id);
-            }
+        if (!submittedSecretKey || typeof submittedSecretKey !== 'string') {
+            throw new Error('Secret key is required for system authorization.');
         }
 
-        // Verify password hash
-        const isMatch = bcrypt.compareSync(password, admin.password_hash);
+        const configuredKey = this.getOwnerSecretKey();
+
+        // Perform timing-safe comparison
+        const submittedBuffer = Buffer.from(submittedSecretKey.trim());
+        const configuredBuffer = Buffer.from(configuredKey.trim());
+
+        let isMatch = false;
+        if (submittedBuffer.length === configuredBuffer.length) {
+            isMatch = crypto.timingSafeEqual(submittedBuffer, configuredBuffer);
+        }
 
         if (!isMatch) {
-            const failedAttempts = (admin.failed_attempts || 0) + 1;
-            let lockedUntil = null;
+            lockoutState.failedAttempts += 1;
+            const attempts = lockoutState.failedAttempts;
 
-            if (failedAttempts >= 5) {
-                // Lock account for 30 minutes after 5 failed attempts
-                lockedUntil = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-                db.prepare('UPDATE admin SET failed_attempts = ?, locked_until = ? WHERE id = ?')
-                    .run(failedAttempts, lockedUntil, admin.id);
-
-                this.logAuthEvent('LOCKOUT', ipAddress, userAgent, { username, failedAttempts });
-                throw new Error('Account locked due to 5 consecutive failed login attempts. Lockout active for 30 minutes.');
+            if (attempts >= 5) {
+                lockoutState.lockedUntil = Date.now() + 15 * 60 * 1000; // 15 minute lockout
+                this.logAuthEvent('INTRUSION_LOCKOUT', ipAddress, userAgent, {
+                    action: '5 consecutive invalid secret key attempts',
+                    lockoutMinutes: 15
+                });
+                throw new Error('Terminal locked for 15 minutes due to 5 consecutive unauthorized key attempts.');
             } else {
-                db.prepare('UPDATE admin SET failed_attempts = ? WHERE id = ?').run(failedAttempts, admin.id);
-                const remaining = 5 - failedAttempts;
-                this.logAuthEvent('LOGIN_FAILED', ipAddress, userAgent, { username, failedAttempts });
-                throw new Error(`Invalid credentials. ${remaining} attempt(s) remaining before account lockout.`);
+                const remaining = 5 - attempts;
+                this.logAuthEvent('UNAUTHORIZED_KEY_ATTEMPT', ipAddress, userAgent, {
+                    failedAttempts: attempts,
+                    remainingAttempts: remaining
+                });
+                throw new Error(`Unauthorized Secret Key. ${remaining} attempt(s) remaining before terminal lockout.`);
             }
         }
 
-        // Successful Authentication: Reset failed attempts & update last login timestamp
-        const nowIso = new Date().toISOString();
-        db.prepare('UPDATE admin SET failed_attempts = 0, locked_until = NULL, last_login = ? WHERE id = ?')
-            .run(nowIso, admin.id);
+        // Key is valid: Reset lockout counters
+        lockoutState.failedAttempts = 0;
+        lockoutState.lockedUntil = null;
 
-        this.logAuthEvent('LOGIN_SUCCESS', ipAddress, userAgent, { username });
+        // Log forensic event
+        this.logAuthEvent('OWNER_AUTHORIZATION_GRANTED', ipAddress, userAgent, {
+            role: 'owner',
+            authMethod: 'SECRET_KEY'
+        });
 
-        return this.generateToken(admin.username);
+        // Issue signed JWT token
+        return this.generateToken();
     }
 
     /**
-     * Issues signed JWT valid for 8 hours.
+     * Issues signed JWT valid for 8 hours for the verified Owner.
      */
-    static generateToken(username) {
-        return jwt.sign({ username, role: 'admin' }, JWT_SECRET, { expiresIn: '8h' });
+    static generateToken() {
+        return jwt.sign(
+            { role: 'owner', username: 'OWNER', authType: 'secret_key' },
+            JWT_SECRET,
+            { expiresIn: '8h' }
+        );
     }
 
     /**
@@ -125,10 +166,14 @@ class AuthService {
      * Writes auth event to audit log table.
      */
     static logAuthEvent(action, ipAddress, userAgent, detailsObj = {}) {
-        const stmt = db.prepare(
-            'INSERT INTO auth_logs (action, ip_address, user_agent, details) VALUES (?, ?, ?, ?)'
-        );
-        stmt.run(action, ipAddress || '127.0.0.1', userAgent || 'Unknown', JSON.stringify(detailsObj));
+        try {
+            const stmt = db.prepare(
+                'INSERT INTO auth_logs (action, ip_address, user_agent, details) VALUES (?, ?, ?, ?)'
+            );
+            stmt.run(action, ipAddress || '127.0.0.1', userAgent || 'Unknown', JSON.stringify(detailsObj));
+        } catch (e) {
+            console.error('Failed to write auth log:', e.message);
+        }
     }
 }
 

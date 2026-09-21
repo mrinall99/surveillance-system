@@ -1,6 +1,6 @@
 /**
- * Auth Router Endpoints.
- * Express routes for system initialization, login, logout, and security audit log retrieval.
+ * Single-Owner Secret Key Auth Routes.
+ * Express routes for system status, secret key login, logout, session verification, and audit logs.
  */
 const express = require('express');
 const router = express.Router();
@@ -8,68 +8,65 @@ const AuthService = require('../services/auth.service');
 const { requireAuth } = require('../middleware/auth.middleware');
 const db = require('../db/database');
 
-// GET /api/auth/status — Check if admin account is configured
+// GET /api/auth/status — System readiness and lockout status
 router.get('/status', (req, res) => {
     try {
-        const initialized = AuthService.isInitialized();
-        res.json({ initialized });
+        const lockout = AuthService.getLockoutStatus();
+        res.json({
+            initialized: true,
+            authType: 'SECRET_KEY',
+            lockout
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// POST /api/auth/setup — Initial admin registration
-router.post('/setup', (req, res) => {
+// GET /api/auth/verify — Verifies current cookie session
+router.get('/verify', requireAuth, (req, res) => {
+    res.json({
+        authenticated: true,
+        user: req.user
+    });
+});
+
+// POST /api/auth/login — Authenticate with Master Secret Key
+router.post('/login', (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { secretKey } = req.body;
         const ip = req.ip || req.connection.remoteAddress;
         const userAgent = req.get('User-Agent');
 
-        const token = AuthService.setupAdmin(username, password, ip, userAgent);
+        const token = AuthService.login(secretKey, ip, userAgent);
 
         // Set HTTP-only Cookie (8 hours)
         res.cookie('auth_token', token, {
             httpOnly: true,
-            secure: false, // Set to true if running HTTPS
+            secure: false, // Set to true if running over HTTPS
             sameSite: 'lax',
             maxAge: 8 * 60 * 60 * 1000
         });
 
-        res.json({ success: true, message: 'Admin account created successfully.', username });
-    } catch (err) {
-        res.status(400).json({ error: err.message });
-    }
-});
-
-// POST /api/auth/login — Admin authentication
-router.post('/login', (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const ip = req.ip || req.connection.remoteAddress;
-        const userAgent = req.get('User-Agent');
-
-        const token = AuthService.login(username, password, ip, userAgent);
-
-        res.cookie('auth_token', token, {
-            httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            maxAge: 8 * 60 * 60 * 1000
+        res.json({
+            success: true,
+            message: 'Owner access authorized. Terminal unlocked.',
+            user: { username: 'OWNER', role: 'owner' }
         });
-
-        res.json({ success: true, message: 'Authentication successful.', username });
     } catch (err) {
-        res.status(401).json({ error: err.message });
+        res.status(401).json({
+            error: err.message,
+            lockout: AuthService.getLockoutStatus()
+        });
     }
 });
 
-// POST /api/auth/logout — Log out admin
+// POST /api/auth/logout — Log out owner session
 router.post('/logout', (req, res) => {
     const token = req.cookies?.auth_token;
     if (token) {
         const decoded = AuthService.verifyToken(token);
         if (decoded) {
-            AuthService.logAuthEvent('LOGOUT', req.ip, req.get('User-Agent'), { username: decoded.username });
+            AuthService.logAuthEvent('OWNER_LOGOUT', req.ip, req.get('User-Agent'), { role: decoded.role });
         }
     }
     res.clearCookie('auth_token');

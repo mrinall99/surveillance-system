@@ -10,6 +10,9 @@ const path = require('path');
 const fs = require('fs');
 const YAML = require('yaml');
 
+// Load .env variables
+require('dotenv').config({ path: path.join(__dirname, '../.env') });
+
 const authRoutes = require('./routes/auth.routes');
 const configRoutes = require('./routes/config.routes');
 const zoneRoutes = require('./routes/zone.routes');
