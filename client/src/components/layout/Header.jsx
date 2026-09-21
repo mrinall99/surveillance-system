@@ -101,13 +101,13 @@ const Header = ({ isConnected, onToggleMobileNav }) => {
           style={{ background: 'rgba(15,26,48,0.7)' }}
         >
           <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-gradient-to-br from-cyan-500 to-violet-600 flex items-center justify-center text-white text-[9px] sm:text-[10px] font-bold flex-shrink-0">
-            👑
+            AD
           </div>
           <span className="text-[var(--text-primary)] hidden sm:block font-semibold tracking-wider text-xs">
-            OWNER
+            ADMIN
           </span>
           <span className="hidden lg:block text-[9px] text-cyan-400 uppercase tracking-widest border-l border-[var(--border-subtle)] pl-2">
-            MASTER KEY
+            
           </span>
         </div>
 
