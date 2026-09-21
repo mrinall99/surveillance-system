@@ -2,7 +2,7 @@
 WebSocket Server Module.
 Runs an async WebSocket server on Port 8765.
 Streams processed video frames (JPEG base64) and detection payloads to the Node.js backend.
-Listens for incoming configuration updates and control signals.
+Listens for incoming configuration updates.
 """
 import asyncio
 import json
@@ -34,10 +34,13 @@ class EngineWebSocketServer:
             async for message in websocket:
                 try:
                     data = json.loads(message)
-                    if data.get("type") == "UPDATE_CONFIG":
+                    msg_type = data.get("type")
+
+                    if msg_type == "UPDATE_CONFIG":
                         logger.info("⚙️ Received Live Configuration Update from Node Backend!")
                         if self.config_callback:
                             self.config_callback(data.get("config", {}))
+
                 except Exception as e:
                     logger.error(f"Error handling WebSocket message: {e}")
         except websockets.exceptions.ConnectionClosed:

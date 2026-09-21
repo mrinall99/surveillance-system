@@ -211,6 +211,14 @@
       "ip_address": "::1",
       "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
       "details": "{\"role\":\"owner\",\"authMethod\":\"SECRET_KEY\"}"
+    },
+    {
+      "id": 26,
+      "timestamp": "2026-09-21T19:56:11.434Z",
+      "action": "OWNER_LOGOUT",
+      "ip_address": "::1",
+      "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+      "details": "{\"role\":\"owner\"}"
     }
   ],
   "events": [

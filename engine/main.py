@@ -56,11 +56,19 @@ async def main_loop():
         if "detection" in new_config:
             detector.apply_config(new_config["detection"])
 
+    def on_camera_switch(cam_data):
+        source = cam_data.get("source", 0)
+        name = cam_data.get("name", "Active Camera")
+        source_type = cam_data.get("type")
+        logger.info(f"🔄 Switching Active Camera Source to: {name} ({source}) [{source_type}]")
+        camera_mgr.switch_primary_source(source, name, source_type)
+
     ws_port = config.get("server", {}).get("engine_ws_port", 8765)
     ws_server = EngineWebSocketServer(
         host="0.0.0.0", 
         port=ws_port, 
-        config_callback=on_live_config_update
+        config_callback=on_live_config_update,
+        camera_callback=on_camera_switch
     )
     await ws_server.start()
 

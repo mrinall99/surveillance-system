@@ -1,7 +1,7 @@
 """
 Camera Manager Module.
-Handles video frame capture from webcams (0, 1, 2...), RTSP streams, and HTTP MJPEG video feeds.
-Includes automatic frame resizing, FPS control, and connection retry logic.
+Handles video frame capture from the primary webcam using OpenCV.
+Includes automatic frame resizing and FPS control.
 """
 import cv2
 import time
@@ -11,9 +11,9 @@ logger = logging.getLogger("SurveillanceEngine.CameraManager")
 
 class CameraStream:
     """
-    Manages a single video source connection.
+    Manages a single video source connection (Webcam or RTSP stream).
     """
-    def __init__(self, camera_id, name, source, resolution=(640, 480), fps=20):
+    def __init__(self, camera_id=1, name="Primary Stream", source=0, resolution=(640, 480), fps=25):
         self.camera_id = camera_id
         self.name = name
         self.source = source
@@ -25,44 +25,44 @@ class CameraStream:
         self._connect()
 
     def _connect(self):
-        """Attempts to initialize OpenCV VideoCapture."""
-        logger.info(f"Connecting to Camera ID {self.camera_id} ('{self.name}') at source: {self.source}")
-        
-        # If source is numeric string, cast to int (webcam index)
+        """Attempts to initialize OpenCV VideoCapture for the current source."""
+        logger.info(f"🎥 Connecting to Camera ID {self.camera_id} ('{self.name}') -> {self.source}")
+
         source_val = self.source
         if isinstance(source_val, str) and source_val.isdigit():
             source_val = int(source_val)
 
+        if self.cap is not None and self.cap.isOpened():
+            self.cap.release()
+
         self.cap = cv2.VideoCapture(source_val)
-        
+
         if isinstance(source_val, int):
-            # Set resolution properties for local webcam
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.target_resolution[0])
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.target_resolution[1])
             self.cap.set(cv2.CAP_PROP_FPS, self.target_fps)
 
         if self.cap.isOpened():
             self.is_connected = True
-            logger.info(f"Successfully connected to Camera ID {self.camera_id}")
+            logger.info(f"✅ Successfully opened stream: {self.name} ({self.source})")
         else:
             self.is_connected = False
-            logger.error(f"Failed to open Camera ID {self.camera_id} at source {self.source}")
+            logger.error(f"❌ Failed to open stream: {self.name} at source {self.source}")
 
     def read_frame(self):
         """
         Reads next frame from source while maintaining target FPS rate.
         Returns (success: bool, frame: np.ndarray or None)
         """
-        if not self.is_connected or self.cap is None:
+        if not self.is_connected or self.cap is None or not self.cap.isOpened():
             self._connect()
             if not self.is_connected:
                 return False, None
 
         ret, frame = self.cap.read()
+
         if not ret or frame is None:
-            logger.warning(f"Camera ID {self.camera_id} frame read failed. Attempting reconnect...")
             self.is_connected = False
-            self.cap.release()
             return False, None
 
         # Resize to target resolution if needed
@@ -81,22 +81,25 @@ class CameraStream:
 
 class CameraManager:
     """
-    Manages multiple CameraStream instances dynamically.
+    Manages CameraStream instances.
     """
     def __init__(self, camera_configs):
         self.cameras = {}
+        if not camera_configs:
+            camera_configs = [{"id": 1, "name": "Primary Webcam", "source": 0, "resolution": [640, 480], "fps": 25}]
+
         for cam_cfg in camera_configs:
-            cam_id = cam_cfg.get("id")
+            cam_id = cam_cfg.get("id", 1)
             self.cameras[cam_id] = CameraStream(
                 camera_id=cam_id,
                 name=cam_cfg.get("name", f"Camera {cam_id}"),
                 source=cam_cfg.get("source", 0),
                 resolution=cam_cfg.get("resolution", [640, 480]),
-                fps=cam_cfg.get("fps", 20)
+                fps=cam_cfg.get("fps", 25)
             )
 
-    def get_camera(self, camera_id):
-        return self.cameras.get(camera_id)
+    def get_camera(self, camera_id=1):
+        return self.cameras.get(camera_id) or list(self.cameras.values())[0] if self.cameras else None
 
     def release_all(self):
         for cam in self.cameras.values():
