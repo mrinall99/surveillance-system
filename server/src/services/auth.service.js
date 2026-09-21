@@ -36,11 +36,30 @@ class AuthService {
      * Retrieves the configured Master Owner Secret Key from environment, config, or database.
      */
     static getOwnerSecretKey() {
-        return (
-            process.env.OWNER_SECRET_KEY ||
-            configYaml.auth?.owner_secret_key ||
-            'HAWKEYE-MASTER-OWNER-KEY-2026'
-        );
+        // 1. Direct environment variable
+        if (process.env.OWNER_SECRET_KEY) {
+            return process.env.OWNER_SECRET_KEY;
+        }
+
+        // 2. Read from server/.env directly if process.env wasn't hydrated
+        const envPath = path.join(__dirname, '../../.env');
+        if (fs.existsSync(envPath)) {
+            try {
+                const envContent = fs.readFileSync(envPath, 'utf8');
+                const match = envContent.match(/OWNER_SECRET_KEY=(.*)/);
+                if (match && match[1]) {
+                    return match[1].trim().replace(/^["']|["']$/g, '');
+                }
+            } catch (e) {}
+        }
+
+        // 3. Fallback to config.yaml
+        if (configYaml.auth?.owner_secret_key) {
+            return configYaml.auth.owner_secret_key;
+        }
+
+        // 4. Default hardcoded owner key
+        return 'Mrinal@2006';
     }
 
     /**
