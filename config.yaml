@@ -1,0 +1,104 @@
+cameras:
+  - id: 1
+    name: Primary Webcam
+    source: 0
+    resolution:
+      - 640
+      - 480
+    fps: 30
+detection:
+  model: yolov8s.pt
+  confidence_threshold: 0.7
+  iou_threshold: 0.45
+  target_classes:
+    - person
+    - car
+    - truck
+    - bus
+    - motorcycle
+    - bicycle
+    - dog
+    - cat
+    - backpack
+    - suitcase
+    - handbag
+  device: auto
+  input_size: 640
+motion:
+  enabled: true
+  sensitivity: 500
+  learning_rate: 0.005
+  blur_kernel:
+    - 21
+    - 21
+  dilate_iterations: 3
+  erode_iterations: 1
+tracking:
+  enabled: true
+  algorithm: bytetrack
+  max_age: 30
+  min_hits: 3
+  loiter_threshold_seconds: 300
+zones:
+  - name: Default Zone
+    type: monitored
+    polygon:
+      - - 5
+        - 5
+      - - 95
+        - 5
+      - - 95
+        - 95
+      - - 5
+        - 95
+threats:
+  rules:
+    - condition: person in restricted
+      level: CRITICAL
+    - condition: vehicle in restricted
+      level: HIGH
+    - condition: person loitering
+      level: HIGH
+    - condition: person in monitored
+      level: MEDIUM
+    - condition: animal anywhere
+      level: LOW
+recording:
+  enabled: true
+  pre_buffer_seconds: 10
+  post_record_seconds: 20
+  format: avi
+  annotated: true
+  retention_days: 30
+  output_dir: ./recordings
+  snapshot_dir: ./snapshots
+alerts:
+  cooldown_seconds: 15
+  sound:
+    enabled: true
+  email:
+    enabled: false
+    smtp_server: smtp.gmail.com
+    smtp_port: 587
+    sender: ""
+    password: ""
+    recipients: []
+    min_threat_level: HIGH
+auth:
+  jwt_secret: CHANGE_THIS_TO_A_RANDOM_SECRET_KEY
+  token_expiry_hours: 8
+  session_timeout_minutes: 30
+  max_failed_attempts: 5
+  lockout_duration_minutes: 30
+  password_min_length: 8
+server:
+  host: 0.0.0.0
+  port: 5000
+  engine_ws_port: 8765
+  cors_origin: http://localhost:3000
+  debug: false
+logging:
+  level: info
+  file: ./logs/surveillance.log
+  max_size: 10m
+  max_files: 5

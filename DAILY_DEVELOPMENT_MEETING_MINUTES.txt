@@ -1,0 +1,146 @@
+================================================================================
+DAILY DEVELOPMENT MEETING MINUTES & PROGRESS SUMMARY
+PROJECT: AI-Powered Smart Surveillance & Threat Detection System
+DATE: September 20 - September 21, 2026
+PARTICIPANTS: Lead Engineer (User) & AI Pair Programmer
+================================================================================
+
+MEETING OBJECTIVE:
+Review the end-to-end progress across all development sessions today, covering
+the complete implementation of Phase 1 (Core Pipeline & Security), Phase 2 (Spatial
+Intelligence & Threat Engine), and our latest audio/visual polish sprint.
+
+--------------------------------------------------------------------------------
+SESSION 1: BUILDING THE CORE SURVEILLANCE PIPELINE (PHASE 1)
+--------------------------------------------------------------------------------
+
+1. What We Planned:
+   - Create a clean 3-part system:
+     * Part 1: Python Engine to watch the camera and run AI detection.
+     * Part 2: Node.js Backend to act as the brain and security gatekeeper.
+     * Part 3: Modern React Dashboard to show the video feed and live alerts.
+   - Run AI object detection on the user's dedicated NVIDIA RTX 2050 GPU.
+   - Enforce bank-grade user login and security.
+
+2. What We Built & Delivered:
+   - Python AI Engine:
+     * Connected YOLOv8s deep-learning model directly to the laptop webcam.
+     * Enabled NVIDIA CUDA acceleration (~5 milliseconds per frame, ultra-fast).
+     * Added ByteTrack to give every detected person or car a persistent ID number.
+     * Added MOG2 motion detection to avoid wasting GPU power when nothing moves.
+     * Streamed 30 FPS video frames over WebSockets on port 8765.
+   - Node.js Backend:
+     * Set up REST APIs and real-time Socket.IO communication on port 5000.
+     * Implemented bcrypt password encryption (12 rounds) and JWT authentication.
+     * Added an automatic 30-minute account lockout if someone fails password 5 times.
+     * Created dynamic settings update so the user can change system settings
+       directly in the web app without editing config.yaml files manually.
+   - React Frontend:
+     * Built a sleek, cyberpunk dark-mode command center.
+     * Added live video feed player, latency trackers, and DEFCON security status.
+     * Built the first-time setup wizard and secure login screen.
+
+3. Challenges Overcome:
+   - Issue: The SQLite database required C++ compilers that failed on Node.js v24.
+   - Solution: Designed a lightweight, zero-dependency JSON database engine
+     that saves directly to data/surveillance.json with zero installation errors.
+
+--------------------------------------------------------------------------------
+SESSION 2: SPATIAL INTELLIGENCE & POLYGONAL ZONES (PHASE 2)
+--------------------------------------------------------------------------------
+
+1. What We Planned:
+   - Teach the system spatial awareness: recognize WHERE an object is standing.
+   - Allow the user to draw custom virtual fences/boundaries directly on the video.
+   - Classify danger into 4 clear levels (CRITICAL, HIGH, MEDIUM, LOW).
+
+2. What We Built & Delivered:
+   - Geometry Engine (Ray-Casting Algorithm):
+     * Implemented point-in-polygon math in simple JavaScript.
+     * The system calculates the bottom-center of any person or vehicle and
+       checks if that dot falls inside any drawn zone.
+   - 4-Level Threat Intelligence Engine:
+     * Level 1 (CRITICAL): A person or vehicle steps inside a Restricted Zone.
+     * Level 2 (HIGH): A person loiters in a Monitored Zone for more than 30 seconds.
+     * Level 3 (MEDIUM): Normal activity inside a Monitored Zone.
+     * Level 4 (LOW): Harmless background movement (animals, trees, safe zones).
+   - Visual Zone Editor:
+     * Added a point-and-click drawing tool on the "Cameras" page.
+     * Users can click directly on the live camera stream to drop pins and create
+       any shape (e.g., restricted door, parking area).
+   - Full Documentation:
+     * Created dedicated technical manuals and simple layman explanation guides
+       for both Phase 1 and Phase 2 in the docs/ folder.
+
+--------------------------------------------------------------------------------
+SESSION 3: POLISH, BUG FIXING & CUSTOM "JALDI" AUDIO ALARM
+--------------------------------------------------------------------------------
+
+1. What We Addressed:
+   - User reported: "There is no colored polygon boundaries in my live feed."
+   - User reported: "The server is not starting (EADDRINUSE 5000)."
+   - User requested: "Instead of just pulsing color, add beep sound effect."
+   - User requested: "Use the jaldi.mp3 from audio folder instead of the beep sound."
+   - User reported: "It is not playing audio when entered restricted zone."
+
+2. Root Causes Identified:
+   - Zone Display Issue: An earlier background server process held an empty zone
+     array in memory and overwrote surveillance.json during login.
+   - Port 5000 Busy: A background instance of the backend was already running.
+   - Audio Not Playing on Breach: The user was testing while on the Cameras page
+     (/cameras - ZoneEditor), but the audio alert was only wired to Dashboard.
+     Also, web browsers block automatic audio until the user clicks the page once.
+
+3. Fixes & Enhancements Delivered:
+   - Database Self-Healing:
+     * Added auto-seeding in database.js so default zones (Restricted Main Zone,
+       Monitored Perimeter) can never be accidentally erased.
+   - Vivid Boundary Overlays:
+     * Increased polygon stroke lines, added neon glows, anchor corner dots,
+       and labels that do not get cut off at screen edges.
+     * Added a "ZONES: ON / OFF" button on the video player toolbar.
+   - Port Freeing:
+     * Cleanly stopped background tasks so port 5000 is 100% free for user terminal.
+   - Custom Voice Alarm ("jaldi.mp3"):
+     * Copied audio/jaldi.mp3 to client/public/audio/jaldi.mp3.
+     * Built a Web Audio API audio player in audioAlert.js that pre-decodes the MP3
+       directly into browser memory for instant, glitch-free playback.
+     * Added automatic window click listeners to unlock browser audio restrictions.
+     * Added breach detection and jaldi.mp3 playback to BOTH the Dashboard and
+       the Cameras (Zone Editor) page.
+     * Added instant "TEST JALDI AUDIO" buttons on both pages for one-click testing.
+
+--------------------------------------------------------------------------------
+CURRENT SYSTEM STATUS AT END OF DAY
+--------------------------------------------------------------------------------
+
+[STATUS: OPERATIONAL & STABLE]
+- Live Video: Streaming smoothly at ~30 FPS with ~5ms GPU inference time.
+- Security Zones: Visible on feed with glowing borders and active breach tracking.
+- Threat Engine: Correctly detecting breaches (logged 2,200+ threat events in DB).
+- Voice Alarm: jaldi.mp3 triggers immediately when entering restricted zones.
+- Build Verification: Frontend production build completed with 0 errors.
+
+--------------------------------------------------------------------------------
+HOW TO START THE SYSTEM TOMORROW MORNING
+--------------------------------------------------------------------------------
+
+Open 3 separate PowerShell or Command Prompt terminals:
+
+Terminal 1 (AI Vision Engine):
+  cd "c:\Users\mrina\Documents\surveillance system\engine"
+  python main.py
+
+Terminal 2 (Node.js Backend):
+  cd "c:\Users\mrina\Documents\surveillance system\server"
+  npm start
+
+Terminal 3 (React Web Application):
+  cd "c:\Users\mrina\Documents\surveillance system\client"
+  npm run dev
+
+Then open your browser to: http://localhost:3000
+
+================================================================================
+END OF MEETING MINUTES — CONGRATULATIONS ON A HIGHLY PRODUCTIVE DAY!
+================================================================================

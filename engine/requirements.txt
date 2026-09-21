@@ -1,0 +1,27 @@
+# ============================================================
+# Python CV Engine — Dependencies
+# ============================================================
+# Core computer vision and deep learning stack for the
+# surveillance system's detection engine.
+# ============================================================
+
+# --- PyTorch CUDA GPU Acceleration Index ---
+--extra-index-url https://download.pytorch.org/whl/cu121
+
+# --- Computer Vision ---
+opencv-python>=4.8.0            # Frame capture, pre-processing, drawing, video I/O
+numpy>=1.24.0                   # Array operations for frame/matrix manipulation
+
+# --- Object Detection (YOLOv8) ---
+ultralytics>=8.2.0              # YOLOv8 model loading, inference, and tracking (includes ByteTrack)
+torch>=2.0.0                    # PyTorch backend for YOLO (CUDA 12.1 GPU-accelerated)
+torchvision>=0.15.0             # Vision utilities for PyTorch
+
+# --- WebSocket Server ---
+websockets>=12.0                # Async WebSocket server to stream data to Node.js
+
+# --- Configuration ---
+pyyaml>=6.0                     # YAML config file parsing
+
+# --- Utilities ---
+Pillow>=10.0.0                  # Image format conversions (JPEG encoding for streaming)
