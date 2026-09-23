@@ -12,12 +12,13 @@ import websockets
 logger = logging.getLogger("SurveillanceEngine.WebSocketServer")
 
 class EngineWebSocketServer:
-    def __init__(self, host="0.0.0.0", port=8765, config_callback=None):
+    def __init__(self, host="0.0.0.0", port=8765, config_callback=None, camera_callback=None):
         self.host = host
         self.port = port
         self.clients = set()
         self.server = None
         self.config_callback = config_callback
+        self.camera_callback = camera_callback
 
     async def register(self, websocket):
         self.clients.add(websocket)
@@ -40,6 +41,10 @@ class EngineWebSocketServer:
                         logger.info("⚙️ Received Live Configuration Update from Node Backend!")
                         if self.config_callback:
                             self.config_callback(data.get("config", {}))
+                    elif msg_type == "SWITCH_CAMERA":
+                        logger.info("📷 Received Camera Switch Request from Node Backend!")
+                        if self.camera_callback:
+                            self.camera_callback(data.get("camera", {}))
 
                 except Exception as e:
                     logger.error(f"Error handling WebSocket message: {e}")

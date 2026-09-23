@@ -75,8 +75,8 @@ async def main_loop():
     logger.info("⚡ Real-time Video Stream Capture Loop Active...")
 
     try:
-        primary_cam = camera_mgr.get_camera(1)
         while True:
+            primary_cam = camera_mgr.get_camera(1)
             if primary_cam:
                 success, frame = primary_cam.read_frame()
                 if success and frame is not None:

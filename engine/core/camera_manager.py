@@ -99,8 +99,18 @@ class CameraManager:
             )
 
     def get_camera(self, camera_id=1):
-        return self.cameras.get(camera_id) or list(self.cameras.values())[0] if self.cameras else None
+        return self.cameras.get(camera_id) or (list(self.cameras.values())[0] if self.cameras else None)
+
+    def switch_primary_source(self, source, name="Primary Stream", source_type="webcam"):
+        cam = self.get_camera(1)
+        if cam:
+            cam.name = name
+            cam.source = source
+            cam._connect()
+        else:
+            self.cameras[1] = CameraStream(camera_id=1, name=name, source=source)
 
     def release_all(self):
         for cam in self.cameras.values():
             cam.release()
+
