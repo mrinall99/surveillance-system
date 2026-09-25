@@ -1,6 +1,6 @@
 /**
  * Tactical Security Audio Alert Synthesizer & MP3 Player.
- * Pre-decodes /audio/jaldi.mp3 with Web Audio API for zero-latency playback.
+ * Pre-decodes /audio/error.mp3 with Web Audio API for zero-latency playback.
  * Automatically unlocks on first user gesture (click/keypress) anywhere on the page.
  */
 
@@ -37,7 +37,7 @@ class AudioAlertService {
       window.addEventListener(evt, unlockHandler, { once: true, passive: true });
     });
 
-    // Pre-fetch and decode /audio/jaldi.mp3 into memory
+    // Pre-fetch and decode /audio/error.mp3 into memory
     this.loadAudioBuffer();
   }
 
@@ -53,7 +53,7 @@ class AudioAlertService {
 
   async loadAudioBuffer() {
     try {
-      const res = await fetch('/audio/jaldi.mp3');
+      const res = await fetch('/audio/error.mp3');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const arrayBuf = await res.arrayBuffer();
 
@@ -62,7 +62,7 @@ class AudioAlertService {
           arrayBuf,
           (decoded) => {
             this.audioBuffer = decoded;
-            console.log('✅ jaldi.mp3 decoded and ready in Web Audio API memory');
+            console.log('✅ error.mp3 decoded and ready in Web Audio API memory');
           },
           (err) => {
             console.warn('Web Audio decode error, will use fallback:', err);
@@ -70,7 +70,7 @@ class AudioAlertService {
         );
       }
     } catch (err) {
-      console.warn('Failed to pre-cache /audio/jaldi.mp3:', err.message);
+      console.warn('Failed to pre-cache /audio/error.mp3:', err.message);
     }
   }
 
@@ -128,7 +128,7 @@ class AudioAlertService {
 
     // 2. Secondary: Standard HTML5 Audio Element fallback
     try {
-      const audio = new Audio('/audio/jaldi.mp3');
+      const audio = new Audio('/audio/error.mp3');
       this.isPlaying = true;
       this.lastPlayTime = now;
 

@@ -1,45 +1,48 @@
-# ⚡ 09. Supabase Cloud Database Shift & Integration Guide
+# ⚡ 09. Supabase Cloud Database Integration & Setup Guide
 
 ---
 
-## 🎯 Overview
-Our system now supports **Dual Database Architecture (Hybrid Mode)**:
-1. **Supabase Cloud Mode**: Uses real cloud-hosted PostgreSQL with instantaneous cloud synchronization when `.env` credentials are present.
-2. **Local JSON Mode**: Seamlessly falls back to `server/data/surveillance.json` if offline or running locally without internet.
+## 🎯 Architectural Overview
+Our surveillance system has been **100% migrated to Supabase Cloud PostgreSQL**.
 
-This gives you the **ultimate presentation advantage** for your college viva:
-- You can demonstrate real cloud PostgreSQL database integration via Supabase.
-- You are 100% safe against internet drops during live college demos!
+The local `surveillance.json` database file has been removed, and the Node.js backend now communicates directly with Supabase Cloud PostgreSQL tables via `@supabase/supabase-js`.
+
+### 🗄️ Database Tables in Supabase Cloud
+1. **`admin`**: User accounts, roles, and salted `Bcrypt` password hashes.
+2. **`zones`**: Spatial security zone polygon coordinates (`[[x1,y1], [x2,y2], ...]`).
+3. **`events`**: Live AI threat detection alert logs (timestamp, object class, confidence, track_id).
+4. **`cameras`**: Active camera feeds and RTSP stream sources.
+5. **`auth_logs`**: Forensic audit trail of user login attempts.
 
 ---
 
-## 🛠️ Step-by-Step Setup Guide to Activate Supabase
+## 🛠️ Step-by-Step Setup Guide
 
 ### Step 1: Create a Free Supabase Project (3 Minutes)
 1. Go to [https://supabase.com](https://supabase.com) and click **Start your project**.
 2. Sign in with GitHub or email (100% free).
-3. Click **New Project**, name it `hawkeye-surveillance`, enter a password, and click **Create new project**.
+3. Click **New Project**, name it `hawkeye-surveillance`, set a database password, and click **Create new project**.
 
 ---
 
-### Step 2: Create Tables via SQL Editor
-1. In your Supabase dashboard sidebar, click the **SQL Editor** tab (icon `>_`).
-2. Open [`server/src/db/supabase_schema.sql`](file:///c:/Users/mrina/Documents/surveillance%20system/server/src/db/supabase_schema.sql) in VS Code, copy all contents, and paste them into the Supabase SQL Editor.
+### Step 2: Run SQL Schema & Disable RLS
+1. In your Supabase dashboard sidebar, click the **SQL Editor** tab (`>_`).
+2. Open [`server/src/db/supabase_schema.sql`](file:///c:/Users/mrina/Documents/surveillance%20system/server/src/db/supabase_schema.sql) in VS Code, copy all contents, and paste them into the SQL Editor.
 3. Click **RUN** (top right).
-4. You will see `Success: No rows returned`. All 5 tables (`admin`, `zones`, `events`, `cameras`, `auth_logs`) and indexes are created!
+4. All 5 tables (`admin`, `zones`, `events`, `cameras`, `auth_logs`) will be created, default admin seeded (`hitman009`), and **Row-Level Security (RLS)** disabled so your backend API key can insert live event telemetry freely!
 
 ---
 
-### Step 3: Get Your API Credentials
-1. In your Supabase dashboard, go to **Project Settings** (gear icon ⚙️) → **API**.
-2. Copy the following two strings:
+### Step 3: Get Your Supabase API Credentials
+1. In your Supabase dashboard sidebar, go to **Project Settings** (gear icon ⚙️) → **API**.
+2. Copy the following two parameters:
    - **Project URL** (e.g., `https://xyzcompany.supabase.co`)
    - **anon / public key** (e.g., `eyJhbGciOi...`)
 
 ---
 
 ### Step 4: Configure `server/.env`
-Create a `.env` file in the `server/` directory (or edit existing `server/.env`) and paste:
+Create or edit your `server/.env` file:
 
 ```env
 PORT=5000
@@ -51,11 +54,11 @@ SUPABASE_KEY=your-anon-public-key-here
 
 ---
 
-### Step 5: Start Server & Verify
-Restart your Node.js backend:
+### Step 5: Start Server & Verify Cloud Connection
+Start your Node.js backend:
 ```bash
 cd server
-npm run dev
+npm start
 ```
 
 You will see the startup confirmation log:
@@ -65,11 +68,25 @@ You will see the startup confirmation log:
 
 ---
 
+## 💡 Row-Level Security (RLS) & Common Troubleshooting
+
+### Fix: `new row violates row-level security policy for table "events"`
+If you ever see an RLS error in the server console, run this command in your Supabase SQL Editor:
+```sql
+ALTER TABLE public.admin DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.zones DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.events DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.cameras DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.auth_logs DISABLE ROW LEVEL SECURITY;
+```
+
+---
+
 ## 🎓 How to Answer Examiners in Your Viva
 
-If your professor asks: *"What database are you using, and is it cloud-ready?"*
+If your professor asks: *"Which database management system are you using?"*
 
 > **Winning Answer**:  
-> *"Our architecture features a **Hybrid Dual-Database System**.  
-> We use **Supabase Cloud PostgreSQL** as our primary cloud database, hosting tables for security telemetry, spatial polygon zones, user authentication, and audit logs.  
-> We also implemented an **offline fallback driver** (`surveillance.json`) so the system can operate on local edge hardware without requiring an internet connection."*
+> *"We use **Supabase Cloud PostgreSQL** as our enterprise production database.  
+> Our Node.js backend uses `@supabase/supabase-js` to store security threat alerts, spatial security zones, and user credentials.  
+> It provides high-performance SQL indexing, real-time subscription capabilities, and encrypted cloud persistence."*
