@@ -2,7 +2,7 @@
 
 Welcome to the **Deep Logic & Viva Preparation Guide** for the **HawkEye AI Surveillance System**.
 
-This folder explains **why** every part of the program exists, **how** it works under the hood, **how the developer thought while designing it**, **exact line-by-line code logic**, and **how to answer examiner questions to get full marks in your project viva**.
+This folder explains **why** every part of the program exists, **how** it works under the hood, **how the developer thought while designing it**, **exact line-by-line code logic**, **Supabase cloud database migration**, and **how to answer examiner questions to get full marks in your project viva**.
 
 ---
 
@@ -10,6 +10,8 @@ This folder explains **why** every part of the program exists, **how** it works 
 
 | Document | Key Focus / What You Will Learn |
 |---|---|
+| **[09_supabase_integration_guide.md](./09_supabase_integration_guide.md)** | ⚡ **SUPABASE MIGRATION**: Complete setup guide for cloud PostgreSQL, SQL schema script, `.env` config, and viva answers. |
+| **[08_backend_master_guide.md](./08_backend_master_guide.md)** | 🟢 **BACKEND MASTER GUIDE**: Deep breakdown of Express server, JWT auth, Bcrypt hashing, REST API routes, and database adapter. |
 | **[07_code_logic_mapping.md](./07_code_logic_mapping.md)** | 💻 **LINE-BY-LINE CODE LOGIC**: Exact mapping of python MOG2, YOLOv8, Base64 encoding, Node atomic DB writes, and JWT auth code. |
 | **[06_viva_master_cheatsheet.md](./06_viva_master_cheatsheet.md)** | 🏆 **TOP 20 VIVA QUESTIONS**: Examiner Q&As, Presentation Script, and Demo Day Checklist. |
 | **[01_developer_mindset_and_design_decisions.md](./01_developer_mindset_and_design_decisions.md)** | **Mental Model & Architectural Rationale**: Why Python + Node + React? Why MOG2 before YOLO? Why JSON DB over PostgreSQL? Why WebSockets over HTTP polling? |
